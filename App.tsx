@@ -8,6 +8,12 @@ import AdminPanel from './pages/AdminPanel';
 import IdentityPage from './pages/IdentityPage';
 import { UserProfile } from './types';
 import { ToastProvider } from './context/ToastContext';
+import memberstackDOM from '@memberstack/dom';
+
+// Initialize Memberstack
+const memberstack = memberstackDOM.init({
+  publicKey: "pk_8f74a4fb743024aa7665",
+});
 
 const App: React.FC = () => {
   // --- Global State ---

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile, TradeSignal, PlanTier, AccountType } from '../types';
 import { analyzeChartWithGemini } from '../services/geminiService';
 import TradingJourney from '../components/TradingJourney';
@@ -7,15 +7,155 @@ import {
   Upload, Activity, RefreshCw, Eye, 
   Target, ShieldAlert, LayoutGrid, 
   History, User as UserIcon, LogOut, ChevronRight, BarChart2,
-  Share2, Copy, Check, X, Settings, ArrowUpRight, ArrowDownRight, Menu, Scan, CreditCard
+  Share2, Copy, Check, X, Settings, ArrowUpRight, ArrowDownRight, Menu, Scan, CreditCard,
+  Zap, TrendingUp, Layers, Award, Bell
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import { ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
 interface Props {
   user: UserProfile;
   updateUser: (u: Partial<UserProfile>) => void;
 }
+
+// --- NEW WIDGETS BASED ON DESIGN ---
+
+const PerformanceMetricsWidget: React.FC<{ user: UserProfile }> = ({ user }) => {
+   const history = user.tradeHistory || [];
+   const totalTrades = history.length;
+   const winCount = history.filter(t => t.status === 'WIN').length;
+   const winRate = totalTrades > 0 ? Math.round((winCount / totalTrades) * 100) : 0;
+   
+   // Mock data for display if no history, else real calculations
+   const displayWinRate = totalTrades > 0 ? winRate : 0;
+   const displayTrades = totalTrades; // Cap for visual if needed
+   const displayAvgTime = 79; // Mock for "Avg Time" as we don't track duration yet
+
+   const Ring = ({ value, color, label }: { value: number, color: string, label: string }) => {
+      const data = [{ value: value }, { value: 100 - value }];
+      return (
+         <div className="flex flex-col items-center">
+            <div className="w-16 h-16 md:w-20 md:h-20 relative">
+               <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                     <Pie 
+                        data={data} 
+                        innerRadius="70%" 
+                        outerRadius="100%" 
+                        startAngle={90} 
+                        endAngle={-270} 
+                        dataKey="value"
+                        stroke="none"
+                     >
+                        <Cell fill={color} />
+                        <Cell fill="#1f2937" />
+                     </Pie>
+                  </PieChart>
+               </ResponsiveContainer>
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-bold text-xs md:text-sm">{value}%</span>
+               </div>
+            </div>
+            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase font-bold mt-2">{label}</span>
+         </div>
+      );
+   };
+
+   return (
+      <div className="bg-[#0b101a]/90 backdrop-blur-md border border-gray-800 rounded-2xl p-5 shadow-lg w-full">
+         <h4 className="text-white font-bold text-xs mb-4">Performance Metrics</h4>
+         <div className="flex justify-between items-center px-2">
+            <Ring value={displayWinRate} color="#06b6d4" label="WIN RATE" />
+            <Ring value={displayTrades > 100 ? 100 : displayTrades} color="#f97316" label="TOTAL TRADES" />
+            <Ring value={displayAvgTime} color="#10b981" label="AVG TIME" />
+         </div>
+      </div>
+   );
+};
+
+const ActiveSignalWidget: React.FC<{ signal: TradeSignal | null }> = ({ signal }) => {
+   if (!signal) return (
+      <div className="bg-[#0b101a]/90 backdrop-blur-md border border-gray-800 rounded-2xl p-5 shadow-lg w-full min-h-[180px] flex flex-col justify-center items-center text-center">
+          <Activity className="text-gray-600 mb-2" />
+          <p className="text-gray-500 text-xs">No Active Signal</p>
+          <p className="text-gray-600 text-[10px]">Upload a chart to scan</p>
+      </div>
+   );
+
+   const isBuy = signal.direction === 'BUY';
+   // Strict Buy = Green, Sell = Red
+   const mainColor = isBuy ? '#22c55e' : '#ef4444'; // Green-500 : Red-500
+   const gradientId = isBuy ? "colorBuy" : "colorSell";
+   
+   // Mock sparkline data
+   const data = [
+      { v: 40 }, { v: 30 }, { v: 20 }, { v: 27 }, { v: 18 }, { v: 23 }, 
+      { v: 34 }, { v: 40 }, { v: 45 }, { v: 42 }, { v: 50 }, { v: 55 }, 
+      { v: 52 }, { v: 58 }, { v: 65 }, { v: 60 }, { v: 70 }
+   ];
+   // Flip data for sell visualization
+   const chartData = isBuy ? data : data.map(d => ({ v: 100 - d.v }));
+
+   return (
+      <div className="bg-[#0b101a]/90 backdrop-blur-md border border-gray-800 rounded-2xl p-5 shadow-lg w-full relative overflow-hidden group">
+         <div className="flex justify-between items-start mb-2 relative z-10">
+            <div>
+               <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">AI SIGNAL DETECTED</h4>
+               <p className="text-[10px] text-gray-400 font-mono">
+                  {signal.pair}, {signal.timeframe}, {signal.strategy.split(' ')[0]}
+               </p>
+            </div>
+            <div className="flex gap-2">
+               <div className="w-7 h-7 rounded bg-gray-800 flex items-center justify-center text-gray-400">
+                  <Upload size={12} />
+               </div>
+               <div className="w-7 h-7 rounded bg-gray-800 flex items-center justify-center text-gray-400">
+                  <Check size={12} />
+               </div>
+            </div>
+         </div>
+
+         {/* Sparkline Chart */}
+         <div className="h-[100px] w-full -mx-2 relative z-0 mt-2">
+            <ResponsiveContainer width="110%" height="100%">
+               <AreaChart data={chartData}>
+                  <defs>
+                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={mainColor} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={mainColor} stopOpacity={0}/>
+                     </linearGradient>
+                  </defs>
+                  <Area 
+                     type="monotone" 
+                     dataKey="v" 
+                     stroke={mainColor} 
+                     strokeWidth={2} 
+                     fillOpacity={1} 
+                     fill={`url(#${gradientId})`} 
+                  />
+               </AreaChart>
+            </ResponsiveContainer>
+         </div>
+
+         {/* Buy/Sell Button & Price Labels */}
+         <div className="absolute bottom-5 right-5 z-20">
+            <button className={`font-black text-white px-6 py-2 rounded-lg text-sm shadow-lg tracking-wide ${isBuy ? 'bg-green-500 shadow-green-500/20' : 'bg-red-500 shadow-red-500/20'}`}>
+               {signal.direction}
+            </button>
+         </div>
+
+         <div className="flex justify-between mt-2 text-[9px] text-gray-600 font-mono relative z-10">
+            <span>{signal.entry.toFixed(2)}</span>
+            <span>{signal.tp1.toFixed(2)}</span>
+            <span>{signal.tp2.toFixed(2)}</span>
+         </div>
+      </div>
+   );
+}
+
+
+// --- EXISTING COMPONENTS (Refined) ---
 
 // Share Card Component
 const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal, appName }) => {
@@ -25,7 +165,7 @@ const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal
   const borderClass = isBuy ? 'border-green-500' : 'border-red-500';
 
   return (
-    <div className="relative w-full max-w-sm bg-black rounded-3xl border border-gray-800 overflow-hidden shadow-2xl transform transition-all select-none font-mono">
+    <div className="relative w-full bg-[#0a0a0a] rounded-3xl border border-gray-800 overflow-hidden shadow-2xl transform transition-all select-none font-mono backdrop-blur-xl">
       {/* Holographic header */}
       <div className={`h-2 ${bgClass} shadow-[0_0_20px] ${isBuy ? 'shadow-green-500/50' : 'shadow-red-500/50'}`}></div>
       
@@ -41,7 +181,7 @@ const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal
               <h2 className="text-3xl font-black text-white tracking-tighter">{signal.pair}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-400">{signal.timeframe}</span>
-                <span className={`text-xs font-bold ${colorClass} uppercase tracking-widest flex items-center gap-1`}>
+                <span className={`text-xs font-bold ${isBuy ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} px-2 py-0.5 rounded uppercase tracking-widest flex items-center gap-1`}>
                   {isBuy ? <ArrowUpRight size={12}/> : <ArrowDownRight size={12}/>} {signal.direction}
                 </span>
               </div>
@@ -49,6 +189,20 @@ const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal
             <div className={`w-12 h-12 rounded-xl ${bgClass}/20 border ${borderClass}/50 flex items-center justify-center`}>
               {isBuy ? <Target className="text-green-400" /> : <Target className="text-red-400" />}
             </div>
+          </div>
+
+          {/* Confidence Meter */}
+          <div className="mb-6">
+             <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1 text-gray-400">
+                <span>AI Confidence</span>
+                <span className={signal.confidence > 80 ? 'text-green-400' : 'text-yellow-400'}>{signal.confidence}%</span>
+             </div>
+             <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ${signal.confidence > 80 ? 'bg-green-500' : 'bg-yellow-500'}`} 
+                  style={{ width: `${signal.confidence}%` }}
+                />
+             </div>
           </div>
 
           <div className="space-y-4 mb-6">
@@ -77,13 +231,26 @@ const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal
                </div>
               <span className="text-xl text-green-400 font-bold">{signal.tp2}</span>
             </div>
+            <div className="flex justify-between items-end border-b border-gray-800 pb-2 bg-green-500/5 px-2 rounded">
+               <div>
+                  <span className="text-xs text-green-400 uppercase block font-bold">TP 3 (1:3)</span>
+                  <span className="text-[10px] text-gray-600">+{signal.tpPips * 3} pips</span>
+               </div>
+              <span className="text-xl text-green-400 font-bold">{signal.tp3}</span>
+            </div>
           </div>
 
-          <div className="bg-gray-900/50 rounded-xl p-3 mb-4 border border-gray-800">
-            <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">AI Logic</p>
-            <p className="text-xs text-gray-300 italic line-clamp-3 leading-relaxed">"{signal.reasoning}"</p>
-            {signal.reasoning.includes("FVG") && <span className="inline-block bg-cyber-900 text-cyber-400 text-[9px] px-1 rounded mt-1 mr-1">#FVG</span>}
-            {signal.reasoning.includes("BOS") && <span className="inline-block bg-cyber-900 text-cyber-400 text-[9px] px-1 rounded mt-1 mr-1">#BOS</span>}
+          <div className="bg-gray-900/50 rounded-xl p-4 mb-4 border border-gray-800">
+             <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] text-cyber-500 uppercase font-bold flex items-center gap-1">
+                   <Zap size={10} /> Strategy
+                </span>
+                <span className="text-[10px] text-white bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+                   {signal.strategy || 'Price Action'}
+                </span>
+             </div>
+            <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Breakdown</p>
+            <p className="text-xs text-gray-300 italic leading-relaxed whitespace-pre-wrap">{signal.breakdown}</p>
           </div>
 
           <div className="flex justify-between items-center pt-2">
@@ -119,15 +286,46 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Stats Logic
+  const totalSignals = user.signalsUsedLifetime;
+  // Calculate most traded pair
+  const pairCounts = (user.tradeHistory || []).reduce((acc: any, val: any) => {
+    acc[val.pair] = (acc[val.pair] || 0) + 1;
+    return acc;
+  }, {});
+  const mostTradedPair = Object.keys(pairCounts).reduce((a, b) => pairCounts[a] > pairCounts[b] ? a : b, 'N/A');
+
+  // --- DAILY REMINDER LOGIC ---
+  useEffect(() => {
+    const checkDailyReminder = () => {
+        const lastRemindedDate = localStorage.getItem('last_tp_reminder_date');
+        const today = new Date().toDateString();
+
+        if (lastRemindedDate !== today) {
+            // Trigger Notification
+            setTimeout(() => {
+                showToast("🔔 Daily Reminder: Stick to your TP Plan!", 'info');
+                showToast("Target 1:3 RR for consistent growth.", 'success');
+            }, 2000);
+            localStorage.setItem('last_tp_reminder_date', today);
+        }
+    };
+    checkDailyReminder();
+  }, [showToast]);
+
+
   // --- Helper to map AI symbol to TradingView Symbol ---
   const getTradingViewSymbol = (pair: string): string => {
     const p = pair.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (p.includes('XAU') || p.includes('GOLD')) return 'OANDA:XAUUSD';
     if (p.includes('NDX') || p.includes('NASDAQ') || p.includes('US100')) return 'CAPITALCOM:US100';
     if (p.includes('DJI') || p.includes('US30')) return 'CAPITALCOM:US30';
+    if (p.includes('BTC')) return 'BINANCE:BTCUSDT';
+    if (p.includes('ETH')) return 'BINANCE:ETHUSDT';
     return `FX:${p}`;
   };
 
+  // If signal exists, use its pair, otherwise default
   const activeSymbol = lastSignal ? getTradingViewSymbol(lastSignal.pair) : 'OANDA:XAUUSD';
 
   const checkLimits = () => {
@@ -196,7 +394,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             const sl = analysis.sl;
             const riskDist = Math.abs(entry - sl);
             
-            let finalTp1, finalTp2;
+            let finalTp1, finalTp2, finalTp3;
             const isJpy = analysis.pair.toUpperCase().includes('JPY');
             const isGold = analysis.pair.toUpperCase().includes('XAU');
             const precision = isJpy ? 3 : isGold ? 2 : 5;
@@ -204,13 +402,16 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             if (analysis.direction === 'BUY') {
                 finalTp1 = entry + riskDist; 
                 finalTp2 = entry + (riskDist * 2); 
+                finalTp3 = entry + (riskDist * 3);
             } else {
                 finalTp1 = entry - riskDist; 
                 finalTp2 = entry - (riskDist * 2); 
+                finalTp3 = entry - (riskDist * 3);
             }
             
             finalTp1 = Number(finalTp1.toFixed(precision));
             finalTp2 = Number(finalTp2.toFixed(precision));
+            finalTp3 = Number(finalTp3.toFixed(precision));
             const finalEntry = Number(entry.toFixed(precision));
             const finalSl = Number(sl.toFixed(precision));
 
@@ -237,6 +438,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             sl: finalSl,
             tp1: finalTp1,
             tp2: finalTp2,
+            tp3: finalTp3,
             direction: analysis.direction as 'BUY' | 'SELL',
             slPips,
             tpPips: parseFloat(tp1Pips.toFixed(1)),
@@ -244,12 +446,16 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             riskAmount: parseFloat(riskAmount.toFixed(2)),
             rewardTp1: parseFloat(riskAmount.toFixed(2)),
             rewardTp2: parseFloat((riskAmount * 2).toFixed(2)),
-            reasoning: analysis.reasoning
+            rewardTp3: parseFloat((riskAmount * 3).toFixed(2)),
+            reasoning: analysis.reasoning,
+            confidence: analysis.confidence || 85,
+            strategy: analysis.strategy || 'Price Action',
+            breakdown: analysis.breakdown || analysis.reasoning
             };
 
             setLastSignal(newSignal);
             setIsAnalyzing(false);
-            showToast("Signal Generated Successfully", 'success');
+            showToast("Signal Synced to Market Feed", 'success');
             
             const tradeLogItem = {
                 id: newSignal.id,
@@ -264,6 +470,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                 sl: newSignal.sl,
                 tp1: newSignal.tp1,
                 tp2: newSignal.tp2,
+                tp3: newSignal.tp3,
                 reasoning: newSignal.reasoning,
                 riskAmount: newSignal.riskAmount,
                 lotSize: newSignal.lotSize
@@ -329,7 +536,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-200 flex flex-col md:flex-row font-sans relative">
+    <div className="min-h-screen bg-transparent text-gray-200 flex flex-col md:flex-row font-sans relative">
       
       {/* MOBILE OVERLAY BACKDROP */}
       {isMobileMenuOpen && (
@@ -341,7 +548,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed top-0 left-0 z-50 h-screen w-[280px] bg-[#0a0a0a] border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 z-50 h-screen w-[280px] bg-[#0a0a0a]/90 backdrop-blur-xl border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out
         md:sticky
         ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl shadow-cyber-500/10' : '-translate-x-full md:translate-x-0'}
       `}>
@@ -380,16 +587,16 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
 
         <div className="p-6 mt-auto">
            <div className="bg-gray-900/50 rounded-xl p-3 border border-gray-800 text-xs text-gray-500 text-center">
-              v2.4.0 • Stable Build
+              v2.5.0 • Pro Build
            </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 overflow-y-auto h-screen bg-black/40 flex flex-col">
+      {/* MAIN CONTENT - Background is transparent to let 3D canvas show */}
+      <main className="flex-1 overflow-y-auto h-screen bg-transparent flex flex-col relative z-10">
         
         {/* Mobile Header */}
-        <header className="md:hidden h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-[#0a0a0a] sticky top-0 z-30">
+        <header className="md:hidden h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-[#0a0a0a]/90 backdrop-blur-md sticky top-0 z-30">
            <div className="flex items-center gap-3">
              <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-300 hover:text-white">
                <Menu size={24} />
@@ -402,27 +609,35 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
            </div>
         </header>
 
-        <div className="p-4 md:p-10 max-w-[1400px] mx-auto w-full">
+        <div className="p-4 md:p-10 max-w-[1600px] mx-auto w-full">
           
           {/* TOP HEADER SECTION WITH AVATAR */}
           <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
              <div>
-                <h1 className="text-3xl md:text-4xl font-black text-white mb-2">Welcome back, {user.username.split(' ')[0]}</h1>
-                <p className="text-gray-400 text-sm md:text-base">Here is your trading performance overview for today.</p>
+                <h1 className="text-3xl md:text-4xl font-black text-white mb-2 drop-shadow-lg">Welcome back, {user.username.split(' ')[0]}</h1>
+                <p className="text-gray-400 text-sm md:text-base">Your professional command center is ready.</p>
              </div>
              
              <div className="flex items-center gap-4 w-full md:w-auto">
                 {/* Balance Pill */}
                 <div className="hidden md:flex flex-col items-end mr-4">
                    <p className="text-[10px] uppercase text-gray-500 font-bold">Balance</p>
-                   <p className="text-xl font-mono font-bold text-white">${user.settings.accountSize.toLocaleString()}</p>
+                   <p className="text-xl font-mono font-bold text-white bg-black/40 px-3 py-1 rounded-lg border border-gray-800 backdrop-blur-sm">
+                      ${user.settings.accountSize.toLocaleString()}
+                   </p>
                 </div>
+
+                {/* Notification Bell */}
+                <button className="bg-gray-900/80 backdrop-blur border border-gray-800 p-3 rounded-full hover:bg-gray-800 transition shadow-lg relative">
+                    <Bell size={18} className="text-gray-400" />
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
 
                 {/* USER DROPDOWN */}
                 <div className="relative">
                    <button 
                      onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                     className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-cyber-500/50 rounded-full p-1 pr-4 transition-all"
+                     className="flex items-center gap-3 bg-gray-900/80 backdrop-blur hover:bg-gray-800 border border-gray-700 hover:border-cyber-500/50 rounded-full p-1 pr-4 transition-all"
                    >
                       <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${user.idTheme || 'cyan'}-400 to-${user.idTheme || 'cyan'}-600 flex items-center justify-center text-black font-bold shadow-lg`}>
                          {user.username.charAt(0).toUpperCase()}
@@ -435,7 +650,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
 
                    {/* Dropdown Menu */}
                    {isProfileMenuOpen && (
-                      <div className="absolute right-0 top-14 w-56 bg-[#0e0e0e] border border-gray-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 origin-top-right z-50">
+                      <div className="absolute right-0 top-14 w-56 bg-[#0e0e0e]/95 backdrop-blur-xl border border-gray-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 origin-top-right z-50">
                          <div className="p-2 space-y-1">
                             <button onClick={() => navigate('/id')} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-sm text-gray-300 hover:text-white flex items-center gap-3 transition-colors">
                                <CreditCard size={16} className="text-cyber-500"/> My Identity Card
@@ -457,202 +672,154 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
           {activeView === 'OVERVIEW' && (
             <div className="space-y-8 animate-in fade-in duration-500">
                
-               {/* BENTO GRID */}
+               {/* MAIN GRID - FLIPPED LAYOUT */}
                <div className="grid lg:grid-cols-3 gap-8">
                   
-                  {/* LEFT: SIGNAL WORKSTATION */}
-                  <div className="lg:col-span-2 bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 md:p-8 flex flex-col relative overflow-hidden min-h-[500px] shadow-2xl">
-                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyber-500 to-purple-600"></div>
-                     
-                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                           <Activity size={20} className="text-cyber-500" /> Vision AI Processor
-                        </h3>
-                        {isAnalyzing && <span className="text-[10px] md:text-xs text-cyber-400 font-mono animate-pulse flex items-center gap-2"><div className="w-2 h-2 bg-cyber-500 rounded-full"/> SCANNING NEURAL NET...</span>}
-                     </div>
+                  {/* LEFT COLUMN: VISION AI PROCESSOR (SMALLER) */}
+                  <div className="flex flex-col gap-6 lg:col-span-1">
+                      
+                      {/* NEW STATS WIDGETS */}
+                      <PerformanceMetricsWidget user={user} />
+                      <ActiveSignalWidget signal={lastSignal} />
 
-                     <div className="flex-1 flex flex-col gap-6">
+                      {/* AI SCANNER BOX */}
+                      <div className="bg-[#0e0e0e]/90 backdrop-blur-md border border-gray-800 rounded-3xl p-6 flex flex-col relative overflow-hidden min-h-[300px] shadow-2xl">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyber-500 to-purple-600"></div>
                         
-                        {/* 1. UPLOAD STATE - ONLY IF NO PREVIEW */}
-                        {!previewImage && !lastSignal && (
-                           <div 
-                              className="border-2 border-dashed border-gray-800 hover:border-cyber-500/30 rounded-2xl flex-1 flex flex-col items-center justify-center cursor-pointer transition-all group bg-gray-900/30 hover:bg-gray-900/60 min-h-[300px]"
-                              onClick={() => fileInputRef.current?.click()}
-                           >
-                              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-cyber-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition shadow-[0_0_30px_rgba(0,188,212,0.1)]">
-                                 {isAnalyzing ? <RefreshCw className="animate-spin text-cyber-500" size={32} /> : <Upload className="text-cyber-500" size={32} />}
-                              </div>
-                              <p className="text-white font-bold text-lg md:text-xl mb-2">Upload Chart for Analysis</p>
-                              <p className="text-xs md:text-sm text-gray-500 text-center max-w-sm px-4">Drop a screenshot of any chart. AI will detect Liquidity, FVG, and Structure breaks instantly.</p>
-                           </div>
-                        )}
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Activity size={20} className="text-cyber-500" /> Vision AI
+                            </h3>
+                            {isAnalyzing && <span className="text-[10px] text-cyber-400 font-mono animate-pulse">SCANNING...</span>}
+                        </div>
 
-                        {/* 2. PREVIEW & ANALYSIS STATE */}
-                        {previewImage && (
-                          <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                             {/* Chart Display */}
-                             <div className="relative w-full rounded-2xl overflow-hidden border border-gray-700 bg-black shadow-lg max-h-[400px]">
-                                <img src={previewImage} alt="Analysis Target" className="w-full h-full object-contain opacity-80" />
-                                
-                                {/* Scanning Effect */}
-                                {isAnalyzing && (
-                                   <div className="absolute inset-0 z-10 bg-cyber-500/5 pointer-events-none">
-                                      <div className="absolute top-0 left-0 w-full h-[2px] bg-cyber-400 shadow-[0_0_15px_#00bcd4] animate-scan z-20"></div>
-                                      <div className="absolute inset-0 flex items-center justify-center">
-                                         <div className="bg-black/70 backdrop-blur-md px-6 py-3 rounded-full border border-cyber-500/30 flex items-center gap-3">
-                                            <Scan className="text-cyber-500 animate-pulse" />
-                                            <span className="text-cyber-500 font-bold font-mono tracking-widest text-xs">ANALYZING STRUCTURE...</span>
-                                         </div>
-                                      </div>
-                                   </div>
-                                )}
-                                
-                                {!isAnalyzing && (
-                                   <button 
-                                     onClick={resetAnalysis}
-                                     className="absolute top-4 right-4 bg-black/60 hover:bg-red-500/80 hover:text-white text-gray-400 p-2 rounded-lg backdrop-blur-sm transition-all border border-gray-700"
-                                     title="Clear and Upload New"
-                                   >
-                                      <X size={18} />
-                                   </button>
-                                )}
-                             </div>
+                        <div className="flex-1 flex flex-col gap-6">
+                            {/* UPLOAD STATE - ONLY IF NO PREVIEW */}
+                            {!previewImage && !lastSignal && (
+                            <div 
+                                className="border-2 border-dashed border-gray-800 hover:border-cyber-500/30 rounded-2xl flex-1 flex flex-col items-center justify-center cursor-pointer transition-all group bg-gray-900/30 hover:bg-gray-900/60"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                                <div className="w-12 h-12 rounded-full bg-cyber-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition shadow-[0_0_30px_rgba(0,188,212,0.1)]">
+                                    {isAnalyzing ? <RefreshCw className="animate-spin text-cyber-500" size={24} /> : <Upload className="text-cyber-500" size={24} />}
+                                </div>
+                                <p className="text-white font-bold text-sm text-center">Upload Chart</p>
+                            </div>
+                            )}
 
-                             {/* 3. SIGNAL RESULT CARD */}
-                             {lastSignal && (
-                               <div className="flex flex-col animate-in fade-in slide-in-from-bottom-4 delay-100">
-                                  {/* Signal Header */}
-                                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 border-b border-gray-800 pb-4 gap-6">
-                                     <div>
-                                        <div className="flex items-center gap-4 mb-2">
-                                           <h1 className="text-3xl md:text-5xl font-black text-white tracking-tighter">{lastSignal.pair}</h1>
-                                           <span className={`px-4 py-2 rounded-lg text-sm md:text-lg font-black tracking-widest uppercase shadow-lg ${lastSignal.direction === 'BUY' ? 'bg-green-500 text-black shadow-green-500/20' : 'bg-red-500 text-black shadow-red-500/20'}`}>
-                                              {lastSignal.direction}
-                                           </span>
-                                        </div>
-                                        <p className="text-gray-400 font-mono flex items-center gap-2 text-xs md:text-base">
-                                           <span className="text-white bg-white/10 px-2 py-0.5 rounded">{lastSignal.timeframe}</span>
-                                           <span>•</span>
-                                           <span className="text-cyber-400">HIGH PROBABILITY SETUP</span>
-                                        </p>
-                                     </div>
-                                     <div className="flex gap-3 w-full md:w-auto">
-                                         <button 
-                                           onClick={() => setShowShareModal(true)}
-                                           className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-cyber-600 hover:bg-cyber-500 text-black font-bold px-6 py-3 rounded-xl transition-all shadow-lg hover:shadow-cyber-500/20"
-                                         >
-                                            <Share2 size={18} /> Share
-                                         </button>
-                                     </div>
-                                  </div>
-
-                                  {/* Key Metrics Grid */}
-                                  <div className="grid grid-cols-2 gap-4 md:gap-8 mb-8">
-                                     <div className="bg-gray-900/50 p-4 md:p-6 rounded-2xl border border-gray-800 relative group hover:border-gray-600 transition">
-                                        <p className="text-[10px] md:text-xs text-gray-500 uppercase font-bold tracking-widest mb-2">Entry Price</p>
-                                        <p className="text-2xl md:text-4xl font-mono text-white tracking-tight">{lastSignal.entry}</p>
-                                     </div>
-                                     <div className="bg-cyber-900/10 p-4 md:p-6 rounded-2xl border border-cyber-500/30 relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10"><Target size={60}/></div>
-                                        <p className="text-[10px] md:text-xs text-cyber-500 uppercase font-bold tracking-widest mb-2">Lot Size ({user.settings.riskPercentage}%)</p>
-                                        <p className="text-2xl md:text-4xl font-mono text-cyber-400 font-black tracking-tight">{lastSignal.lotSize}</p>
-                                     </div>
-                                  </div>
-
-                                  {/* Targets & Risk */}
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                                        <div className="bg-green-500/5 p-5 rounded-2xl border border-green-500/20 flex flex-col justify-between h-32 relative overflow-hidden">
-                                           <div className="flex justify-between items-start">
-                                             <span className="text-xs font-bold text-green-500 uppercase tracking-wider">TP 1</span>
-                                             <span className="text-[10px] bg-green-500 text-black px-2 py-0.5 rounded font-bold">1:1 RR</span>
-                                           </div>
-                                           <div>
-                                              <span className="text-xl md:text-3xl font-mono text-white block">{lastSignal.tp1}</span>
-                                              <div className="flex justify-between items-end mt-1">
-                                                 <span className="text-green-400 font-bold text-sm">+${lastSignal.rewardTp1}</span>
-                                                 <span className="text-[10px] text-gray-500 font-mono">+{lastSignal.tpPips} PIPS</span>
-                                              </div>
-                                           </div>
-                                        </div>
-                                        
-                                        <div className="bg-green-500/5 p-5 rounded-2xl border border-green-500/20 flex flex-col justify-between h-32">
-                                           <div className="flex justify-between items-start">
-                                             <span className="text-xs font-bold text-green-500 uppercase tracking-wider">TP 2</span>
-                                             <span className="text-[10px] bg-green-500 text-black px-2 py-0.5 rounded font-bold">1:2 RR</span>
-                                           </div>
-                                           <div>
-                                              <span className="text-xl md:text-3xl font-mono text-white block">{lastSignal.tp2}</span>
-                                              <div className="flex justify-between items-end mt-1">
-                                                 <span className="text-green-400 font-bold text-sm">+${lastSignal.rewardTp2}</span>
-                                                 <span className="text-[10px] text-gray-500 font-mono">+{lastSignal.tpPips * 2} PIPS</span>
-                                              </div>
-                                           </div>
-                                        </div>
-
-                                        <div className="bg-red-500/5 p-5 rounded-2xl border border-red-500/20 flex flex-col justify-between h-32">
-                                           <div className="flex justify-between items-start">
-                                             <span className="text-xs font-bold text-red-500 uppercase tracking-wider">STOP LOSS</span>
-                                             <span className="text-[10px] bg-red-500 text-black px-2 py-0.5 rounded font-bold">RISK</span>
-                                           </div>
-                                           <div>
-                                              <span className="text-xl md:text-3xl font-mono text-white block">{lastSignal.sl}</span>
-                                              <div className="flex justify-between items-end mt-1">
-                                                 <span className="text-red-400 font-bold text-sm">-${lastSignal.riskAmount}</span>
-                                                 <span className="text-[10px] text-gray-500 font-mono">-{lastSignal.slPips} PIPS</span>
-                                              </div>
-                                           </div>
-                                        </div>
-                                  </div>
-                               </div>
-                             )}
-                          </div>
-                        )}
-                     </div>
+                            {/* PREVIEW & ANALYSIS STATE */}
+                            {previewImage && (
+                            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1">
+                                {/* Chart Display */}
+                                <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-700 bg-black shadow-lg">
+                                    <img src={previewImage} alt="Analysis Target" className="w-full h-full object-cover opacity-80" />
+                                    
+                                    {/* Scanning Effect */}
+                                    {isAnalyzing && (
+                                    <div className="absolute inset-0 z-10 bg-cyber-500/5 pointer-events-none">
+                                        <div className="absolute top-0 left-0 w-full h-[2px] bg-cyber-400 shadow-[0_0_15px_#00bcd4] animate-scan z-20"></div>
+                                    </div>
+                                    )}
+                                    
+                                    {!isAnalyzing && (
+                                    <button 
+                                        onClick={resetAnalysis}
+                                        className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 hover:text-white text-gray-400 p-1.5 rounded-lg backdrop-blur-sm transition-all border border-gray-700"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                    )}
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                      </div>
                   </div>
 
-                  {/* RIGHT: LIVE MONITOR & WIDGETS */}
-                  <div className="flex flex-col gap-8 h-full">
-                     {/* Live Chart Widget */}
-                     <div className="bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 h-[400px] md:h-[320px] flex flex-col relative overflow-hidden shadow-lg">
+                  {/* RIGHT COLUMN: BIG CHART & SIGNAL DETAILS (LARGER) */}
+                  <div className="flex flex-col gap-8 lg:col-span-2">
+                     
+                     {/* Live Chart Widget (BIGGER) */}
+                     <div className="bg-[#0e0e0e]/90 backdrop-blur-md border border-gray-800 rounded-3xl p-6 h-[500px] flex flex-col relative overflow-hidden shadow-lg">
                         <div className="flex justify-between items-center mb-6">
-                           <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 uppercase tracking-wide">
-                              <BarChart2 size={16}/> Live Market Feed
+                           <h3 className="text-base font-bold text-gray-400 flex items-center gap-2 uppercase tracking-wide">
+                              <BarChart2 size={18}/> Pro Live Market Feed
                            </h3>
-                           <div className="flex items-center gap-2">
-                               <span className="flex h-2 w-2 relative">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                               </span>
-                               <span className="text-[10px] font-bold text-green-500 uppercase">Connected</span>
+                           <div className="flex items-center gap-4">
+                               {/* Confidence Badge for Chart */}
+                               {lastSignal && (
+                                 <div className="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
+                                    <span className="text-[10px] text-gray-500 font-bold uppercase">Confidence</span>
+                                    <div className="flex gap-0.5">
+                                       {[1,2,3,4,5].map(i => (
+                                          <div key={i} className={`w-1 h-2 rounded-full ${i <= (lastSignal.confidence/20) ? 'bg-green-500' : 'bg-gray-700'}`}></div>
+                                       ))}
+                                    </div>
+                                 </div>
+                               )}
+
+                               <div className="flex items-center gap-2">
+                                  <span className="flex h-2 w-2 relative">
+                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                  </span>
+                                  <span className="text-[10px] font-bold text-green-500 uppercase">Live</span>
+                               </div>
                            </div>
                         </div>
                         
-                        <div className="flex-1 w-full min-h-0 relative rounded-xl overflow-hidden bg-black">
+                        <div className="flex-1 w-full min-h-0 relative rounded-xl overflow-hidden bg-black/50 border border-gray-800">
                            <TradingChart symbol={activeSymbol} signal={lastSignal} />
                         </div>
                      </div>
 
-                     {/* Stats / Info Widget */}
-                     <div className="bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 flex-1 overflow-hidden relative shadow-lg flex flex-col justify-center">
-                         <div className="absolute top-0 right-0 p-6 opacity-5"><Activity className="w-40 h-40" /></div>
-                         <h3 className="text-sm font-bold text-cyber-500 mb-4 uppercase tracking-wider">Trading Insight</h3>
-                         <div className="relative z-10 space-y-6">
-                            <p className="text-base md:text-lg text-white font-medium leading-relaxed">
-                               "Focus on the <span className="text-cyber-500">15m timeframe</span> liquidity sweeps. The AI is currently detecting high probability reversals on {activeSymbol.split(':')[1] || 'Gold'}."
-                            </p>
-                            <div className="flex gap-4">
-                               <div className="bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-800">
-                                  <p className="text-[10px] text-gray-500 uppercase font-bold">Session</p>
-                                  <p className="text-white font-bold">New York</p>
-                               </div>
-                               <div className="bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-800">
-                                  <p className="text-[10px] text-gray-500 uppercase font-bold">Volatility</p>
-                                  <p className="text-cyber-400 font-bold">High</p>
-                               </div>
-                            </div>
-                         </div>
-                     </div>
+                     {/* Signal Details Expanded */}
+                     {lastSignal && (
+                        <div className="animate-in fade-in slide-in-from-bottom-8">
+                           <div className="flex flex-col md:flex-row gap-6">
+                              
+                              {/* Left: The Card */}
+                              <div className="w-full md:w-1/2">
+                                 <SignalCard signal={lastSignal} appName="Trade Vision Pro" />
+                              </div>
+
+                              {/* Right: Detailed Breakdown & Metrics */}
+                              <div className="w-full md:w-1/2 space-y-4">
+                                 
+                                 {/* TP3 High Reward Highlight */}
+                                 <div className="bg-gradient-to-r from-green-900/40 to-green-600/10 border border-green-500/30 rounded-2xl p-6 flex items-center justify-between backdrop-blur-md">
+                                    <div>
+                                       <p className="text-xs text-green-400 font-bold uppercase tracking-widest mb-1">Max Potential (1:3 RR)</p>
+                                       <h3 className="text-2xl font-black text-white">+${lastSignal.rewardTp3}</h3>
+                                       <p className="text-[10px] text-gray-400">Targeting {lastSignal.tp3}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                                       <TrendingUp className="text-green-400" />
+                                    </div>
+                                 </div>
+
+                                 {/* Strategy Logic Text */}
+                                 <div className="bg-[#0e0e0e]/90 backdrop-blur-md border border-gray-800 rounded-2xl p-6">
+                                    <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                       <Zap size={16} className="text-yellow-500" /> Execution Logic
+                                    </h4>
+                                    <p className="text-sm text-gray-400 leading-relaxed">
+                                       {lastSignal.breakdown}
+                                    </p>
+                                 </div>
+
+                                 <button 
+                                   onClick={() => setShowShareModal(true)}
+                                   className="w-full py-4 bg-cyber-600 hover:bg-cyber-500 text-black font-black rounded-xl transition-all shadow-lg hover:shadow-cyber-500/20 flex items-center justify-center gap-2"
+                                 >
+                                    <Share2 size={20} /> Share Signal
+                                 </button>
+                              </div>
+                           </div>
+                        </div>
+                     )}
+
                   </div>
 
                </div>
@@ -662,7 +829,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
           {activeView === 'JOURNEY' && <TradingJourney user={user} updateUser={updateUser} />}
 
           {activeView === 'SETTINGS' && (
-             <div className="max-w-3xl mx-auto bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 md:p-10 animate-in slide-in-from-right-8 shadow-2xl">
+             <div className="max-w-3xl mx-auto bg-[#0e0e0e]/95 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-10 animate-in slide-in-from-right-8 shadow-2xl">
                 <h3 className="text-xl md:text-2xl font-black text-white mb-8 border-b border-gray-800 pb-6 flex items-center gap-3">
                    <Settings className="text-cyber-500"/> Account Configuration
                 </h3>
@@ -673,7 +840,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                          <label className="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-3">Account Balance ($)</label>
                          <input 
                             type="number" 
-                            className="w-full bg-black border border-gray-700 rounded-xl p-4 text-white focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition outline-none font-mono text-lg" 
+                            className="w-full bg-black/50 border border-gray-700 rounded-xl p-4 text-white focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition outline-none font-mono text-lg" 
                             value={settingsForm.accountSize}
                             onChange={(e) => setSettingsForm({...settingsForm, accountSize: parseFloat(e.target.value)})}
                          />
@@ -682,7 +849,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                          <label className="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-3">Risk per Trade (%)</label>
                          <input 
                             type="number" 
-                            className="w-full bg-black border border-gray-700 rounded-xl p-4 text-white focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition outline-none font-mono text-lg" 
+                            className="w-full bg-black/50 border border-gray-700 rounded-xl p-4 text-white focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition outline-none font-mono text-lg" 
                             value={settingsForm.riskPercentage}
                             onChange={(e) => setSettingsForm({...settingsForm, riskPercentage: parseFloat(e.target.value)})}
                          />
@@ -695,7 +862,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                              <button
                                 key={type}
                                 onClick={() => setSettingsForm({...settingsForm, accountType: type})}
-                                className={`p-4 rounded-xl border text-xs md:text-sm font-bold transition ${settingsForm.accountType === type ? 'bg-cyber-500 text-black border-cyber-500' : 'bg-black border-gray-700 text-gray-400 hover:border-gray-500'}`}
+                                className={`p-4 rounded-xl border text-xs md:text-sm font-bold transition ${settingsForm.accountType === type ? 'bg-cyber-500 text-black border-cyber-500' : 'bg-black/50 border-gray-700 text-gray-400 hover:border-gray-500'}`}
                              >
                                 {type}
                              </button>
@@ -723,7 +890,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
              onClick={e => e.stopPropagation()}
            >
               {/* Card Preview */}
-              <div className="animate-in zoom-in-95 duration-300 w-full flex justify-center">
+              <div className="animate-in zoom-in-95 duration-300 w-full flex justify-center scale-90">
                 <SignalCard signal={lastSignal} appName="Trade Vision Pro" />
               </div>
 

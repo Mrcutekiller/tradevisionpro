@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, TradeLog } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { TrendingUp, Target, Plus, Edit2, Trash2, X, Save, Filter, Trophy, CheckCircle, XCircle, Minus, Clock, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Target, Plus, Edit2, Trash2, X, Save, Filter, Trophy, CheckCircle, XCircle, Minus, Clock, AlertTriangle, Activity } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 interface Props {
@@ -166,6 +166,33 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       
+      {/* HEADER SECTION WITH LIVE WIN RATE */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-800 pb-6">
+         <div>
+            <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+               <Activity className="text-cyber-500" /> Trading Journey
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">Track your performance and master your psychology.</p>
+         </div>
+
+         {/* PROMINENT LIVE WIN RATE BADGE */}
+         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-5 shadow-xl shadow-cyber-500/5">
+            <div>
+               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">Live Win Rate</span>
+               <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full animate-pulse ${winRateNum >= 50 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  <span className="text-xs font-bold text-gray-300">REAL-TIME</span>
+               </div>
+            </div>
+            <div className="h-10 w-px bg-gray-800"></div>
+            <div>
+               <span className={`text-4xl font-black tracking-tighter ${winRateNum >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                  {winRate}%
+               </span>
+            </div>
+         </div>
+      </div>
+
       {/* 1. KEY METRICS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -198,8 +225,8 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00bcd4" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#00bcd4" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
@@ -228,7 +255,7 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
                 <Area 
                   type="monotone" 
                   dataKey="value" 
-                  stroke="#00bcd4" 
+                  stroke="#f97316" 
                   strokeWidth={2}
                   fillOpacity={1} 
                   fill="url(#colorEquity)" 
@@ -315,7 +342,7 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
               </button>
               <button 
                 onClick={() => handleOpenModal()} 
-                className="px-4 py-2 bg-cyber-600 text-black rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-cyber-500 transition shadow-[0_0_15px_rgba(0,188,212,0.3)]"
+                className="px-4 py-2 bg-cyber-600 text-black rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-cyber-500 transition shadow-[0_0_15px_rgba(249,115,22,0.3)]"
               >
                  <Plus size={16} /> Log Trade
               </button>
@@ -416,8 +443,8 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
                            value={formData.type}
                            onChange={e => setFormData({...formData, type: e.target.value as any})}
                         >
-                           <option value="BUY">BUY (Long)</option>
-                           <option value="SELL">SELL (Short)</option>
+                           <option value="BUY">BUY</option>
+                           <option value="SELL">SELL</option>
                         </select>
                      </div>
                   </div>

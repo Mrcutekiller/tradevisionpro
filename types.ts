@@ -31,20 +31,21 @@ export interface TradeLog {
   sl?: number;
   tp1?: number;
   tp2?: number;
-  riskAmount?: number; // Added for balance calc
+  tp3?: number;
+  riskAmount?: number;
   lotSize?: number;
 }
 
 export interface UserProfile {
   id: string;
   username: string;
-  email: string; // Added email field
+  email: string;
   plan: PlanTier;
-  signalsUsedLifetime: number; // For free plan
+  signalsUsedLifetime: number;
   signalsUsedToday: number;
   joinDate: string;
   settings: UserSettings;
-  idTheme: string; // 'cyan', 'emerald', 'violet', etc.
+  idTheme: string;
   tradeHistory: TradeLog[];
 }
 
@@ -58,13 +59,18 @@ export interface TradeSignal {
   sl: number;
   tp1: number;
   tp2: number;
+  tp3: number; // Added TP3
   slPips: number;
   tpPips: number;
   lotSize: number;
   riskAmount: number;
   rewardTp1: number;
   rewardTp2: number;
+  rewardTp3: number; // Added Reward TP3
   reasoning: string;
+  confidence: number; // 0-100
+  strategy: string; // e.g. "ICT FVG Reversal"
+  breakdown: string; // Step by step analysis
 }
 
 export interface AIAnalysisResponse {
@@ -75,7 +81,11 @@ export interface AIAnalysisResponse {
   sl: number;
   tp1: number;
   tp2: number;
+  // TP3 is calculated on frontend based on risk to ensure strict 1:3
   reasoning: string;
   isSetupValid: boolean;
-  marketStructure: string[]; // e.g. ["BOS", "FVG"]
+  marketStructure: string[];
+  confidence: number;
+  strategy: string;
+  breakdown: string;
 }

@@ -15,30 +15,122 @@ const ThreeBackground: React.FC = () => {
     canvas.width = width;
     canvas.height = height;
 
-    const particles: { x: number; y: number; z: number; size: number }[] = [];
-    const particleCount = 150;
-    const connectionDistance = 120;
-
-    // Initialize particles in pseudo-3D space
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        z: Math.random() * 2 + 1, // Depth factor
-        size: Math.random() * 2 + 0.5
+    // --- CONFIG ---
+    const gridSpeed = 0.5;
+    const perspective = 300;
+    const horizonY = height * 0.4; // Horizon line position
+    
+    // Particles (Stars)
+    const stars: { x: number; y: number; z: number; size: number; alpha: number }[] = [];
+    for (let i = 0; i < 200; i++) {
+      stars.push({
+        x: (Math.random() - 0.5) * width * 3,
+        y: (Math.random() - 0.5) * height * 3,
+        z: Math.random() * 2000,
+        size: Math.random() * 2,
+        alpha: Math.random()
       });
     }
 
+    let offsetZ = 0;
     let animationFrameId: number;
-    let mouseX = width / 2;
-    let mouseY = height / 2;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
+    const draw = () => {
+      // 1. Background Fill (Deep Space)
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#020205');
+      gradient.addColorStop(0.5, '#050510');
+      gradient.addColorStop(1, '#0a0a1a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Draw Stars (Background Layer)
+      stars.forEach(star => {
+        // Move stars towards viewer slightly
+        star.z -= 0.5;
+        if (star.z <= 0) star.z = 2000;
+
+        const scale = perspective / (perspective + star.z);
+        const x = width / 2 + star.x * scale;
+        const y = height / 2 + star.y * scale;
+        
+        if (x > 0 && x < width && y > 0 && y < height) {
+           ctx.beginPath();
+           ctx.arc(x, y, star.size * scale, 0, Math.PI * 2);
+           ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * scale})`;
+           ctx.fill();
+        }
+      });
+
+      // 3. Cyber Grid (Floor)
+      ctx.save();
+      ctx.beginPath();
+      // Clip bottom half for floor
+      ctx.rect(0, horizonY, width, height - horizonY);
+      ctx.clip();
+
+      // Fog Gradient for Floor
+      const floorGrad = ctx.createLinearGradient(0, horizonY, 0, height);
+      floorGrad.addColorStop(0, 'rgba(249, 115, 22, 0)'); // Orange fade at horizon
+      floorGrad.addColorStop(0.2, 'rgba(249, 115, 22, 0.05)');
+      floorGrad.addColorStop(1, 'rgba(249, 115, 22, 0.01)'); // Fade out at bottom
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, horizonY, width, height - horizonY);
+
+      // Grid Lines
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.3)'; // Signature Orange
+      ctx.lineWidth = 1;
+
+      // Moving Horizontal Lines
+      offsetZ = (offsetZ + gridSpeed) % 100;
+      for (let z = 0; z < 2000; z += 100) {
+        const pz = z - offsetZ;
+        if (pz <= 0) continue;
+        
+        const scale = perspective / pz;
+        const y = horizonY + (200 * scale); // 200 is camera height equivalent
+
+        // Fade distant lines
+        ctx.globalAlpha = Math.min(1, pz / 1000) * 0.5;
+        if (y < height) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+      }
+
+      // Perspective Vertical Lines
+      for (let x = -2000; x <= 2000; x += 200) {
+         // Project start (horizon)
+         const x1 = width / 2 + (x * (perspective / 2000)); 
+         const y1 = horizonY;
+         
+         // Project end (close to camera)
+         const x2 = width / 2 + (x * (perspective / 100));
+         const y2 = height;
+
+         ctx.globalAlpha = 0.3;
+         ctx.beginPath();
+         ctx.moveTo(x1, y1);
+         ctx.lineTo(x2, y2);
+         ctx.stroke();
+      }
+      ctx.restore();
+
+      // 4. Horizon Glow
+      const glow = ctx.createLinearGradient(0, horizonY - 50, 0, horizonY + 50);
+      glow.addColorStop(0, 'rgba(0,0,0,0)');
+      glow.addColorStop(0.5, 'rgba(249, 115, 22, 0.4)'); // Orange Glow
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, horizonY - 50, width, 100);
+
+      animationFrameId = requestAnimationFrame(draw);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
+    draw();
+
     window.addEventListener('resize', () => {
       width = window.innerWidth;
       height = window.innerHeight;
@@ -46,77 +138,7 @@ const ThreeBackground: React.FC = () => {
       canvas.height = height;
     });
 
-    const draw = () => {
-      ctx.fillStyle = '#050505';
-      ctx.fillRect(0, 0, width, height);
-
-      // Cyber grid effect
-      ctx.strokeStyle = 'rgba(0, 188, 212, 0.03)';
-      ctx.lineWidth = 1;
-      const gridSize = 50;
-      
-      // Moving grid perspective
-      const time = Date.now() * 0.0005;
-      const offsetY = (time * 20) % gridSize;
-
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      for (let y = offsetY; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-
-      // Update and draw particles
-      particles.forEach((p, index) => {
-        // Movement relative to mouse (parallax)
-        const dx = (mouseX - width / 2) * 0.02 * p.z;
-        const dy = (mouseY - height / 2) * 0.02 * p.z;
-        
-        // Gentle float
-        p.y -= 0.2 * p.z; 
-        if (p.y < 0) p.y = height;
-
-        const renderX = p.x + dx;
-        const renderY = p.y + dy;
-
-        // Draw Particle
-        ctx.beginPath();
-        ctx.arc(renderX, renderY, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 188, 212, ${0.3 * p.z})`;
-        ctx.fill();
-
-        // Draw Connections
-        for (let j = index + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const rX2 = p2.x + (mouseX - width / 2) * 0.02 * p2.z;
-          const rY2 = p2.y + (mouseY - height / 2) * 0.02 * p2.z;
-          
-          const dist = Math.hypot(renderX - rX2, renderY - rY2);
-
-          if (dist < connectionDistance) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 188, 212, ${0.15 * (1 - dist / connectionDistance)})`;
-            ctx.lineWidth = 0.5;
-            ctx.moveTo(renderX, renderY);
-            ctx.lineTo(rX2, rY2);
-            ctx.stroke();
-          }
-        }
-      });
-
-      animationFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);

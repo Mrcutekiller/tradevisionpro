@@ -12,14 +12,14 @@ interface Props {
 
 const THEMES: Record<string, any> = {
   cyan: {
-    bg: 'bg-gradient-to-br from-[#021a24] via-[#004e5a] to-[#021a24]',
+    bg: 'bg-gradient-to-br from-[#1c0a00] via-[#5a2000] to-[#1c0a00]', // Updated to Orange base
     border: 'border-cyber-500/30',
     accent: 'text-cyber-400',
-    glow: 'shadow-[0_0_40px_rgba(0,188,212,0.3)]',
+    glow: 'shadow-[0_0_40px_rgba(249,115,22,0.3)]', // Orange glow
     sashColor: 'bg-cyber-500',
     sashText: 'text-black',
     ringColor: 'border-cyber-400',
-    hex: '#00bcd4'
+    hex: '#f97316' // Orange hex
   },
   emerald: {
     bg: 'bg-gradient-to-br from-[#022405] via-[#005a15] to-[#022405]',
@@ -91,7 +91,7 @@ const UserIdentityCard: React.FC<Props> = ({ user, isTeamMember, theme, showCont
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   
-  // Use passed theme or user preference, fallback to cyan
+  // Use passed theme or user preference, fallback to cyan (now orange)
   const activeThemeKey = isTeamMember 
     ? (user.settings.accountType === 'Pro' ? 'founder' : 'ceo') 
     : (theme || user.idTheme || 'cyan');
@@ -287,7 +287,7 @@ const UserIdentityCard: React.FC<Props> = ({ user, isTeamMember, theme, showCont
           onClick={() => setShowShareModal(false)}
         >
            <div 
-             className="bg-[#0a0a0a] border border-gray-800 rounded-2xl w-full max-w-sm p-6 relative shadow-[0_0_50px_rgba(0,188,212,0.15)] animate-in zoom-in-95 duration-200"
+             className="bg-[#0a0a0a] border border-gray-800 rounded-2xl w-full max-w-sm p-6 relative shadow-[0_0_50px_rgba(249,115,22,0.15)] animate-in zoom-in-95 duration-200"
              onClick={e => e.stopPropagation()}
            >
               <button 

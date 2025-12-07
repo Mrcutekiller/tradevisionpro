@@ -2,17 +2,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AIAnalysisResponse } from "../types";
 
 const SYSTEM_PROMPT = `
-You are an expert Forex and Crypto technical analyst (ICT concepts).
+You are an elite institutional Forex and Crypto analyst specializing in ICT (Inner Circle Trader) and SMC (Smart Money Concepts).
 Analyze the chart image provided.
 
 Identify:
-1. Trend & Structure (BOS, CHoCH)
-2. Key Levels (FVG, Order Blocks)
-3. Trade Setup (Entry, SL, TP)
+1. **Strategy**: Name the specific setup (e.g., "ICT Silver Bullet", "Unicorn Model", "Order Block Rejection", "FVG Displacement", "Break & Retest").
+2. **Confidence**: Give a confidence score (0-100) based on the clarity of market structure and confluence factors.
+3. **Breakdown**: Provide a concise, step-by-step bullet point breakdown of why this trade is valid.
+4. **Trade Setup**: Provide Entry, SL, and realistic targets.
 
-IMPORTANT: Your goal is to ALWAYS find a valid trade setup if there is a price chart visible. 
-Only return isSetupValid: false if the image is clearly NOT a trading chart (e.g. a selfie, a cat, a blank screen). 
-If the setup is less clear, provide the best possible probability setup based on market structure.
+IMPORTANT FORMATTING RULES:
+- **Direction**: MUST be exactly "BUY" or "SELL". DO NOT use "Long" or "Short".
+- **Reasoning**: Keep it professional and concise.
+
+CRITICAL: 
+- Your goal is to ALWAYS find a valid trade setup if there is a price chart visible.
+- If the image is clearly NOT a trading chart, return isSetupValid: false.
+- Focus on high R:R setups.
 `;
 
 export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: string): Promise<AIAnalysisResponse> => {
@@ -25,7 +31,7 @@ export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: s
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Using flash for speed, but allowing standard inference
+    // Using flash for speed
     const modelId = "gemini-2.5-flash";
 
     const response = await ai.models.generateContent({
@@ -48,7 +54,7 @@ export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: s
           properties: {
             pair: { type: Type.STRING },
             timeframe: { type: Type.STRING },
-            direction: { type: Type.STRING },
+            direction: { type: Type.STRING, description: "Must be 'BUY' or 'SELL'" },
             entry: { type: Type.NUMBER },
             sl: { type: Type.NUMBER },
             tp1: { type: Type.NUMBER },
@@ -58,12 +64,14 @@ export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: s
             marketStructure: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING } 
-            }
+            },
+            confidence: { type: Type.NUMBER, description: "Confidence score between 0 and 100" },
+            strategy: { type: Type.STRING, description: "Name of the strategy used" },
+            breakdown: { type: Type.STRING, description: "Concise step-by-step analysis" }
           },
-          required: ["pair", "timeframe", "direction", "entry", "sl", "tp1", "tp2", "reasoning", "isSetupValid", "marketStructure"],
+          required: ["pair", "timeframe", "direction", "entry", "sl", "tp1", "tp2", "reasoning", "isSetupValid", "marketStructure", "confidence", "strategy", "breakdown"],
         },
-        temperature: 0.4, // Increased slightly to allow pattern matching on less clear charts
-        // thinkingConfig removed to allow standard model behavior which is more robust
+        temperature: 0.4, 
       }
     });
 
@@ -71,6 +79,12 @@ export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: s
     if (!text) throw new Error("No response from AI");
 
     const data = JSON.parse(text) as AIAnalysisResponse;
+    
+    // Fallback enforcement just in case model slips up
+    if (data.direction.toUpperCase().includes("LONG")) data.direction = "BUY";
+    if (data.direction.toUpperCase().includes("SHORT")) data.direction = "SELL";
+    data.direction = data.direction.toUpperCase();
+
     // Ensure marketStructure is always an array
     if (!data.marketStructure) data.marketStructure = [];
     
@@ -89,7 +103,10 @@ export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: s
       tp2: 0,
       reasoning: "Failed to analyze chart. Please try a clearer image.",
       isSetupValid: false,
-      marketStructure: []
+      marketStructure: [],
+      confidence: 0,
+      strategy: "N/A",
+      breakdown: "Analysis failed."
     };
   }
 };
