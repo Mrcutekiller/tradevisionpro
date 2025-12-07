@@ -10,18 +10,22 @@ Identify:
 2. Key Levels (FVG, Order Blocks)
 3. Trade Setup (Entry, SL, TP)
 
-If valid, provide exact numbers. If invalid or unclear, set isSetupValid: false.
+IMPORTANT: Your goal is to ALWAYS find a valid trade setup if there is a price chart visible. 
+Only return isSetupValid: false if the image is clearly NOT a trading chart (e.g. a selfie, a cat, a blank screen). 
+If the setup is less clear, provide the best possible probability setup based on market structure.
 `;
 
-export const analyzeChartWithGemini = async (base64Image: string): Promise<AIAnalysisResponse> => {
+export const analyzeChartWithGemini = async (base64Image: string, userApiKey?: string): Promise<AIAnalysisResponse> => {
   try {
-    if (!process.env.API_KEY) {
+    const apiKey = userApiKey || process.env.API_KEY;
+
+    if (!apiKey) {
       throw new Error("API Key not configured");
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
-    // Using flash for maximum speed
+    // Using flash for speed, but allowing standard inference
     const modelId = "gemini-2.5-flash";
 
     const response = await ai.models.generateContent({
@@ -58,8 +62,8 @@ export const analyzeChartWithGemini = async (base64Image: string): Promise<AIAna
           },
           required: ["pair", "timeframe", "direction", "entry", "sl", "tp1", "tp2", "reasoning", "isSetupValid", "marketStructure"],
         },
-        temperature: 0.1, // Minimal creativity for faster, deterministic output
-        thinkingConfig: { thinkingBudget: 0 } // Disable thinking for lowest latency
+        temperature: 0.4, // Increased slightly to allow pattern matching on less clear charts
+        // thinkingConfig removed to allow standard model behavior which is more robust
       }
     });
 

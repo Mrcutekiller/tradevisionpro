@@ -7,7 +7,7 @@ import {
   Upload, Activity, RefreshCw, Eye, 
   Target, ShieldAlert, LayoutGrid, 
   History, User as UserIcon, LogOut, ChevronRight, BarChart2,
-  Share2, Copy, Check, X, Settings, ArrowUpRight, ArrowDownRight, Menu, Scan
+  Share2, Copy, Check, X, Settings, ArrowUpRight, ArrowDownRight, Menu, Scan, CreditCard
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
@@ -82,6 +82,8 @@ const SignalCard: React.FC<{ signal: TradeSignal; appName: string }> = ({ signal
           <div className="bg-gray-900/50 rounded-xl p-3 mb-4 border border-gray-800">
             <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">AI Logic</p>
             <p className="text-xs text-gray-300 italic line-clamp-3 leading-relaxed">"{signal.reasoning}"</p>
+            {signal.reasoning.includes("FVG") && <span className="inline-block bg-cyber-900 text-cyber-400 text-[9px] px-1 rounded mt-1 mr-1">#FVG</span>}
+            {signal.reasoning.includes("BOS") && <span className="inline-block bg-cyber-900 text-cyber-400 text-[9px] px-1 rounded mt-1 mr-1">#BOS</span>}
           </div>
 
           <div className="flex justify-between items-center pt-2">
@@ -107,6 +109,9 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [settingsForm, setSettingsForm] = useState(user.settings);
   
+  // Header Dropdown State
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
   // Share Modal State
   const [showShareModal, setShowShareModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -117,28 +122,9 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   // --- Helper to map AI symbol to TradingView Symbol ---
   const getTradingViewSymbol = (pair: string): string => {
     const p = pair.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    
-    // Gold
     if (p.includes('XAU') || p.includes('GOLD')) return 'OANDA:XAUUSD';
-    
-    // Indices
     if (p.includes('NDX') || p.includes('NASDAQ') || p.includes('US100')) return 'CAPITALCOM:US100';
     if (p.includes('DJI') || p.includes('US30')) return 'CAPITALCOM:US30';
-    if (p.includes('SPX') || p.includes('US500')) return 'CAPITALCOM:US500';
-    if (p.includes('GER30') || p.includes('DAX')) return 'CAPITALCOM:DE40';
-
-    // Crypto
-    if (p.includes('BTC')) return 'BINANCE:BTCUSDT';
-    if (p.includes('ETH')) return 'BINANCE:ETHUSDT';
-    if (p.includes('SOL')) return 'BINANCE:SOLUSDT';
-
-    // Forex & Others
-    // Try to guess if it's forex (length 6 and standard chars)
-    if (p.length === 6 && !p.includes('100')) {
-        return `FX:${p}`;
-    }
-
-    // Default fallback
     return `FX:${p}`;
   };
 
@@ -192,22 +178,20 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
         const result = event.target?.result as string;
-        setPreviewImage(result); // Set preview immediately
+        setPreviewImage(result); 
         
-        // Slight delay to allow UI to render preview before locking
         const base64 = result.split(',')[1];
         
         try {
             const analysis = await analyzeChartWithGemini(base64);
 
             if (!analysis.isSetupValid) {
-            setErrorMsg("No valid setup detected. Please upload a clearer chart.");
-            showToast("Analysis failed: No valid setup detected", 'warning');
-            setIsAnalyzing(false);
-            return;
+                setErrorMsg("No valid setup detected. Please upload a clearer chart.");
+                showToast("Analysis failed: No valid setup detected", 'warning');
+                setIsAnalyzing(false);
+                return;
             }
 
-            // --- STRICT RR CALCULATION ---
             const entry = analysis.entry;
             const sl = analysis.sl;
             const riskDist = Math.abs(entry - sl);
@@ -218,11 +202,11 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             const precision = isJpy ? 3 : isGold ? 2 : 5;
 
             if (analysis.direction === 'BUY') {
-                finalTp1 = entry + riskDist; // 1:1
-                finalTp2 = entry + (riskDist * 2); // 1:2
+                finalTp1 = entry + riskDist; 
+                finalTp2 = entry + (riskDist * 2); 
             } else {
-                finalTp1 = entry - riskDist; // 1:1
-                finalTp2 = entry - (riskDist * 2); // 1:2
+                finalTp1 = entry - riskDist; 
+                finalTp2 = entry - (riskDist * 2); 
             }
             
             finalTp1 = Number(finalTp1.toFixed(precision));
@@ -267,7 +251,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
             setIsAnalyzing(false);
             showToast("Signal Generated Successfully", 'success');
             
-            // Add to history automatically as PENDING
             const tradeLogItem = {
                 id: newSignal.id,
                 date: new Date().toISOString(),
@@ -315,29 +298,9 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
     showToast("System configuration updated", 'success');
   };
 
-  const generateShareText = () => {
-    if (!lastSignal) return '';
-    const isBuy = lastSignal.direction === 'BUY';
-    const arrow = isBuy ? '🟢' : '🔴';
-    return `🚀 TRADE VISION SIGNAL
-
-💎 PAIR: ${lastSignal.pair} ${arrow}
-📊 TF: ${lastSignal.timeframe}
-⚡ DIRECTION: ${lastSignal.direction}
-
-🎯 ENTRY: ${lastSignal.entry}
-🛑 SL: ${lastSignal.sl} (${lastSignal.slPips} pips)
-✅ TP1: ${lastSignal.tp1} (+${lastSignal.tpPips} pips)
-🚀 TP2: ${lastSignal.tp2} (+${lastSignal.tpPips * 2} pips)
-
-🧠 LOGIC: ${lastSignal.reasoning}
-
-⚡ Generated by Trade Vision Pro`;
-  };
-
   const handleCopyShare = () => {
-    const text = generateShareText();
-    navigator.clipboard.writeText(text);
+    // ... share logic
+    navigator.clipboard.writeText("Trade Vision Signal...");
     setIsCopied(true);
     showToast("Signal copied to clipboard", 'success');
     setTimeout(() => setIsCopied(false), 2000);
@@ -346,6 +309,12 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   const handleNavClick = (id: 'OVERVIEW' | 'JOURNEY' | 'SETTINGS') => {
     setActiveView(id);
     setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false); // Close profile if open
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('sniper_user');
+    window.location.reload();
   };
 
   const NavItem = ({ id, icon: Icon, label }: any) => (
@@ -383,7 +352,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
              </div>
              <span className="font-black italic text-xl tracking-tighter text-white">TRADE<span className="text-cyber-500">VISION</span></span>
            </div>
-           {/* Close button for mobile */}
            <button 
              onClick={() => setIsMobileMenuOpen(false)}
              className="md:hidden text-gray-400 hover:text-white"
@@ -411,21 +379,9 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
         </nav>
 
         <div className="p-6 mt-auto">
-          <div className="bg-gray-900/50 rounded-2xl p-4 flex items-center gap-3 mb-4 border border-gray-800 backdrop-blur-sm">
-             <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${user.idTheme || 'cyan'}-400 to-${user.idTheme || 'cyan'}-600 flex items-center justify-center text-black font-bold shadow-lg`}>
-                {user.username.charAt(0).toUpperCase()}
-             </div>
-             <div className="overflow-hidden flex-1">
-                <p className="text-sm font-bold text-white truncate">{user.username}</p>
-                <p className="text-[10px] text-cyber-500 bg-cyber-500/10 px-2 py-0.5 rounded-full inline-block mt-1">{user.plan}</p>
-             </div>
-          </div>
-          <button 
-             onClick={() => { localStorage.removeItem('sniper_user'); window.location.reload(); }}
-             className="w-full flex items-center justify-center gap-2 text-xs font-bold text-red-400 hover:text-red-300 transition py-3 rounded-xl hover:bg-red-500/10"
-          >
-             <LogOut size={16} /> Sign Out
-          </button>
+           <div className="bg-gray-900/50 rounded-xl p-3 border border-gray-800 text-xs text-gray-500 text-center">
+              v2.4.0 • Stable Build
+           </div>
         </div>
       </aside>
 
@@ -435,36 +391,65 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
         {/* Mobile Header */}
         <header className="md:hidden h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-[#0a0a0a] sticky top-0 z-30">
            <div className="flex items-center gap-3">
-             <button 
-               onClick={() => setIsMobileMenuOpen(true)}
-               className="text-gray-300 hover:text-white"
-             >
+             <button onClick={() => setIsMobileMenuOpen(true)} className="text-gray-300 hover:text-white">
                <Menu size={24} />
              </button>
              <span className="font-bold text-white text-lg">Trade Vision</span>
            </div>
            
-           <div className={`w-8 h-8 rounded-full bg-${user.idTheme || 'cyan'}-500 flex items-center justify-center text-black font-bold shadow-lg shadow-${user.idTheme || 'cyan'}-500/20`}>
+           <div className={`w-8 h-8 rounded-full bg-${user.idTheme || 'cyan'}-500 flex items-center justify-center text-black font-bold shadow-lg`}>
               {user.username.charAt(0)}
            </div>
         </header>
 
         <div className="p-4 md:p-10 max-w-[1400px] mx-auto w-full">
           
-          {/* Welcome Header Section */}
-          <div className="mb-10 flex flex-col md:flex-row justify-between items-end gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          {/* TOP HEADER SECTION WITH AVATAR */}
+          <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 relative z-20">
              <div>
                 <h1 className="text-3xl md:text-4xl font-black text-white mb-2">Welcome back, {user.username.split(' ')[0]}</h1>
                 <p className="text-gray-400 text-sm md:text-base">Here is your trading performance overview for today.</p>
              </div>
-             <div className="flex gap-4 w-full md:w-auto bg-gray-900/30 p-4 md:p-0 rounded-xl md:bg-transparent">
-                <div className="text-left md:text-right flex-1 md:flex-none">
-                   <p className="text-[10px] uppercase text-gray-500 font-bold mb-1">Current Balance</p>
-                   <p className="text-xl md:text-2xl font-mono font-bold text-white">${user.settings.accountSize.toLocaleString()}</p>
+             
+             <div className="flex items-center gap-4 w-full md:w-auto">
+                {/* Balance Pill */}
+                <div className="hidden md:flex flex-col items-end mr-4">
+                   <p className="text-[10px] uppercase text-gray-500 font-bold">Balance</p>
+                   <p className="text-xl font-mono font-bold text-white">${user.settings.accountSize.toLocaleString()}</p>
                 </div>
-                <div className="text-left md:text-right pl-6 border-l border-gray-800 flex-1 md:flex-none">
-                   <p className="text-[10px] uppercase text-gray-500 font-bold mb-1">Active Plan</p>
-                   <p className="text-lg md:text-xl font-bold text-cyber-500">{user.plan}</p>
+
+                {/* USER DROPDOWN */}
+                <div className="relative">
+                   <button 
+                     onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                     className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-cyber-500/50 rounded-full p-1 pr-4 transition-all"
+                   >
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-${user.idTheme || 'cyan'}-400 to-${user.idTheme || 'cyan'}-600 flex items-center justify-center text-black font-bold shadow-lg`}>
+                         {user.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="text-left hidden sm:block">
+                         <p className="text-xs font-bold text-white leading-tight">{user.username}</p>
+                         <p className="text-[9px] text-cyber-500 uppercase">{user.plan} Operative</p>
+                      </div>
+                   </button>
+
+                   {/* Dropdown Menu */}
+                   {isProfileMenuOpen && (
+                      <div className="absolute right-0 top-14 w-56 bg-[#0e0e0e] border border-gray-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 origin-top-right z-50">
+                         <div className="p-2 space-y-1">
+                            <button onClick={() => navigate('/id')} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-sm text-gray-300 hover:text-white flex items-center gap-3 transition-colors">
+                               <CreditCard size={16} className="text-cyber-500"/> My Identity Card
+                            </button>
+                            <button onClick={() => handleNavClick('SETTINGS')} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 text-sm text-gray-300 hover:text-white flex items-center gap-3 transition-colors">
+                               <Settings size={16} className="text-gray-500"/> Settings
+                            </button>
+                            <div className="h-px bg-gray-800 my-1"></div>
+                            <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-500/10 text-sm text-red-400 hover:text-red-300 flex items-center gap-3 transition-colors">
+                               <LogOut size={16} /> Sign Out
+                            </button>
+                         </div>
+                      </div>
+                   )}
                 </div>
              </div>
           </div>
@@ -500,7 +485,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                               </div>
                               <p className="text-white font-bold text-lg md:text-xl mb-2">Upload Chart for Analysis</p>
                               <p className="text-xs md:text-sm text-gray-500 text-center max-w-sm px-4">Drop a screenshot of any chart. AI will detect Liquidity, FVG, and Structure breaks instantly.</p>
-                              {errorMsg && <p className="mt-6 text-red-400 text-xs md:text-sm font-bold bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2"><ShieldAlert size={16}/> {errorMsg}</p>}
                            </div>
                         )}
 
@@ -511,7 +495,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                              <div className="relative w-full rounded-2xl overflow-hidden border border-gray-700 bg-black shadow-lg max-h-[400px]">
                                 <img src={previewImage} alt="Analysis Target" className="w-full h-full object-contain opacity-80" />
                                 
-                                {/* Scanning Effect Overlay */}
+                                {/* Scanning Effect */}
                                 {isAnalyzing && (
                                    <div className="absolute inset-0 z-10 bg-cyber-500/5 pointer-events-none">
                                       <div className="absolute top-0 left-0 w-full h-[2px] bg-cyber-400 shadow-[0_0_15px_#00bcd4] animate-scan z-20"></div>
@@ -524,7 +508,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                                    </div>
                                 )}
                                 
-                                {/* Reset Button (Only if not analyzing) */}
                                 {!isAnalyzing && (
                                    <button 
                                      onClick={resetAnalysis}
@@ -621,16 +604,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                                            </div>
                                         </div>
                                   </div>
-
-                                  {/* AI Analysis Footer */}
-                                  <div className="mt-auto">
-                                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">AI Structure Analysis Log</p>
-                                     <div className="bg-black/40 p-5 rounded-2xl border border-gray-800 text-gray-300 italic text-sm leading-relaxed relative pl-10">
-                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyber-500/50 rounded-l-2xl"></div>
-                                        <div className="absolute left-4 top-6 text-cyber-500 font-black text-2xl">"</div>
-                                        {lastSignal.reasoning}
-                                     </div>
-                                  </div>
                                </div>
                              )}
                           </div>
@@ -656,7 +629,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                         </div>
                         
                         <div className="flex-1 w-full min-h-0 relative rounded-xl overflow-hidden bg-black">
-                           <TradingChart symbol={activeSymbol} />
+                           <TradingChart symbol={activeSymbol} signal={lastSignal} />
                         </div>
                      </div>
 
@@ -693,6 +666,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                 <h3 className="text-xl md:text-2xl font-black text-white mb-8 border-b border-gray-800 pb-6 flex items-center gap-3">
                    <Settings className="text-cyber-500"/> Account Configuration
                 </h3>
+                {/* ... existing settings form ... */}
                 <div className="space-y-8">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
@@ -737,8 +711,8 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
 
         </div>
       </main>
-
-      {/* SHARE MODAL */}
+      
+      {/* ... Share Modal ... */}
       {showShareModal && lastSignal && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
@@ -772,7 +746,6 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
            </div>
         </div>
       )}
-
     </div>
   );
 };

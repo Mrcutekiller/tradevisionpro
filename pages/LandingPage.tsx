@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserProfile, PlanTier, AccountType } from '../types';
 import PlanCard from '../components/PlanCard';
 import UserIdentityCard from '../components/UserIdentityCard';
-import { ArrowRight, BarChart2, Shield, Zap, Instagram, Send, Eye, Mail, PlayCircle, Upload, CheckCircle, TrendingUp, Cpu } from 'lucide-react';
+import { ArrowRight, BarChart2, Shield, Zap, Instagram, Send, Eye, Mail, PlayCircle, Upload, CheckCircle, TrendingUp, Cpu, Users } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface Props {
@@ -317,11 +317,12 @@ const LandingPage: React.FC<Props> = ({ user }) => {
 
       </section>
 
-      {/* SUB-SECTIONS (PRICING, EMAIL, ETC) KEEPING EXISTING CONTENT */}
-      
       {/* EMAIL BAR SECTION */}
       <section className="mb-24 max-w-4xl mx-auto">
          <div className="bg-[#0b1221] border border-gray-800 rounded-2xl p-8 relative overflow-hidden group shadow-2xl">
+            {/* Visual Bar Accent */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-cyan-500 to-orange-500"></div>
+            
             <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-50 group-hover:opacity-100 transition duration-500"></div>
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                <div className="text-left">
@@ -347,36 +348,47 @@ const LandingPage: React.FC<Props> = ({ user }) => {
          </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing - ONLY SNIPER PRO */}
       <section className="mb-32">
-        <h2 className="text-4xl font-black text-center mb-4 text-white">MEMBERSHIP TIERS</h2>
-        <p className="text-center text-gray-400 mb-16">Select your level of access</p>
+        <h2 className="text-4xl font-black text-center mb-4 text-white">ACCESS MEMBERSHIP</h2>
+        <p className="text-center text-gray-400 mb-12">Limited spots available for the beta program.</p>
         
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          <PlanCard 
-            name="Sniper Basic" 
-            price="$14" 
-            tier={PlanTier.BASIC}
-            features={['5 Signals / Day', 'AI Lot Calculation', 'Basic Pairs + Gold']}
-            missing={['Auto-Trade', 'Advanced Analysis', 'Crypto & Indices']}
-            onSelect={() => handleUpgradeClick('Sniper Basic')}
-          />
-          <PlanCard 
-            name="Sniper Advanced" 
-            price="$29" 
-            tier={PlanTier.ADVANCED}
-            recommended={true}
-            features={['20 Signals / Day', 'AI Lot Calculation', 'All Pairs + Gold + Indices', 'Live Chart', 'Backtesting']}
-            missing={['Auto-Trade']}
-            onSelect={() => handleUpgradeClick('Sniper Advanced')}
-          />
-          <PlanCard 
-            name="Sniper Pro" 
-            price="$49" 
-            tier={PlanTier.PRO}
-            features={['Unlimited Signals', 'All Markets (Crypto inc.)', 'Full AI Analysis', 'Auto-Trade (Beta Access)']}
-            onSelect={() => handleUpgradeClick('Sniper Pro')}
-          />
+        <div className="max-w-md mx-auto relative">
+          {/* Animated Glow behind card */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-cyber-500/20 blur-2xl rounded-3xl -z-10 animate-pulse-slow"></div>
+          
+          <div className="relative">
+             <PlanCard 
+               name="SNIPER PRO" 
+               price="$16" 
+               tier={PlanTier.PRO}
+               recommended={true}
+               features={[
+                 'Unlimited AI Signals',
+                 'All Markets (Crypto, Indices, Forex)',
+                 'Full Deep-Dive AI Analysis',
+                 'Auto-Trade Beta Access',
+                 'Premium Live Chart Feed',
+                 'Priority Support',
+                 'Exclusive Founder Access Card'
+               ]}
+               onSelect={() => handleUpgradeClick('Sniper Pro')}
+             />
+             
+             {/* Visual Capacity Bar on the Card */}
+             <div className="absolute bottom-[-15px] left-6 right-6 bg-[#0a0a0a] border border-gray-800 rounded-lg p-3 shadow-xl flex items-center gap-3">
+                <div className="flex-1">
+                   <div className="flex justify-between text-[9px] font-bold uppercase text-gray-400 mb-1">
+                      <span>Server Capacity</span>
+                      <span className="text-orange-500">87% Full</span>
+                   </div>
+                   <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-red-500 w-[87%] rounded-full"></div>
+                   </div>
+                </div>
+                <Users size={16} className="text-gray-500" />
+             </div>
+          </div>
         </div>
       </section>
 

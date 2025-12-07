@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, TradeLog } from '../types';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { TrendingUp, Target, Plus, Edit2, Trash2, X, Save, Filter, Trophy, CheckCircle, XCircle, Minus, Clock } from 'lucide-react';
+import { TrendingUp, Target, Plus, Edit2, Trash2, X, Save, Filter, Trophy, CheckCircle, XCircle, Minus, Clock, AlertTriangle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 interface Props {
@@ -12,7 +12,9 @@ interface Props {
 const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
   const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingTradeId, setEditingTradeId] = useState<string | null>(null);
+  const [tradeToDeleteId, setTradeToDeleteId] = useState<string | null>(null);
   
   // Form State
   const [formData, setFormData] = useState<Partial<TradeLog>>({
@@ -78,23 +80,30 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this trade log?')) {
-      const tradeToDelete = history.find(t => t.id === id);
-      let newBalance = user.settings.accountSize;
+  const initiateDelete = (id: string) => {
+    setTradeToDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
 
-      // Revert balance impact if trade was not pending
-      if (tradeToDelete && tradeToDelete.status !== 'PENDING') {
-          newBalance -= (tradeToDelete.pnl || 0);
-      }
+  const confirmDelete = () => {
+    if (!tradeToDeleteId) return;
 
-      const updatedHistory = history.filter(t => t.id !== id);
-      updateUser({ 
-          tradeHistory: updatedHistory,
-          settings: { ...user.settings, accountSize: parseFloat(newBalance.toFixed(2)) }
-      });
-      showToast('Trade record permanently deleted', 'info');
+    const tradeToDelete = history.find(t => t.id === tradeToDeleteId);
+    let newBalance = user.settings.accountSize;
+
+    // Revert balance impact if trade was not pending
+    if (tradeToDelete && tradeToDelete.status !== 'PENDING') {
+        newBalance -= (tradeToDelete.pnl || 0);
     }
+
+    const updatedHistory = history.filter(t => t.id !== tradeToDeleteId);
+    updateUser({ 
+        tradeHistory: updatedHistory,
+        settings: { ...user.settings, accountSize: parseFloat(newBalance.toFixed(2)) }
+    });
+    showToast('Trade record permanently deleted', 'info');
+    setIsDeleteModalOpen(false);
+    setTradeToDeleteId(null);
   };
 
   const handleSave = () => {
@@ -366,7 +375,7 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
                     <td className="p-4">
                        <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleOpenModal(trade)} className="p-1.5 hover:bg-white/10 rounded text-cyber-400 transition-colors"><Edit2 size={14}/></button>
-                          <button onClick={() => handleDelete(trade.id)} className="p-1.5 hover:bg-white/10 rounded text-red-400 transition-colors"><Trash2 size={14}/></button>
+                          <button onClick={() => initiateDelete(trade.id)} className="p-1.5 hover:bg-white/10 rounded text-red-400 transition-colors"><Trash2 size={14}/></button>
                        </div>
                     </td>
                   </tr>
@@ -471,6 +480,38 @@ const TradingJourney: React.FC<Props> = ({ user, updateUser }) => {
                   </button>
                </div>
             </div>
+         </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in">
+             <div className="bg-[#1a0505] border border-red-500/30 rounded-2xl w-full max-w-sm p-6 shadow-[0_0_50px_rgba(239,68,68,0.2)] animate-in zoom-in-95">
+                 <div className="flex flex-col items-center text-center mb-6">
+                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                       <AlertTriangle size={32} className="text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-black text-white mb-2">Confirm Deletion</h3>
+                    <p className="text-sm text-gray-400">
+                       This action will permanently remove this trade log and recalculate your balance. This cannot be undone.
+                    </p>
+                 </div>
+                 
+                 <div className="flex gap-3">
+                    <button 
+                       onClick={() => setIsDeleteModalOpen(false)}
+                       className="flex-1 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold transition"
+                    >
+                       Cancel
+                    </button>
+                    <button 
+                       onClick={confirmDelete}
+                       className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition shadow-lg shadow-red-500/20"
+                    >
+                       Delete
+                    </button>
+                 </div>
+             </div>
          </div>
       )}
 
