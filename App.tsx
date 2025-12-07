@@ -43,34 +43,21 @@ const App: React.FC = () => {
         <div className="min-h-screen relative z-10 text-gray-200">
           <Routes>
             <Route path="/" element={<LandingPage user={user} />} />
+            
             <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
             
             <Route 
               path="/dashboard" 
-              element={
-                user ? (
-                  <Dashboard user={user} updateUser={updateUser} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              } 
+              element={user ? <Dashboard user={user} updateUser={updateUser} /> : <Navigate to="/auth" replace />} 
             />
             
             <Route 
               path="/id" 
-              element={
-                user ? (
-                  <IdentityPage user={user} updateUser={updateUser} />
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              } 
+              element={user ? <IdentityPage user={user} updateUser={updateUser} /> : <Navigate to="/auth" replace />} 
             />
             
-            <Route 
-              path="/admin" 
-              element={<AdminPanel />} 
-            />
+            <Route path="/admin" element={<AdminPanel />} />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

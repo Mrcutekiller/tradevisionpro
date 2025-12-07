@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { UserProfile, PlanTier, AccountType } from '../types';
 import PlanCard from '../components/PlanCard';
 import UserIdentityCard from '../components/UserIdentityCard';
-import { ArrowRight, BarChart2, Shield, Zap, Instagram, Send, Eye, Mail } from 'lucide-react';
+import { ArrowRight, BarChart2, Shield, Zap, Instagram, Send, Eye, Mail, PlayCircle, Upload, CheckCircle, TrendingUp, Cpu } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface Props {
   user: UserProfile | null;
@@ -44,6 +45,143 @@ const CEO_PROFILE: UserProfile = {
   tradeHistory: []
 };
 
+// --- HERO DASHBOARD PREVIEW COMPONENTS ---
+
+const HeroChartWidget = () => {
+  const data = [
+    { name: '1', value: 4000 },
+    { name: '2', value: 3000 },
+    { name: '3', value: 2000 },
+    { name: '4', value: 2780 },
+    { name: '5', value: 1890 },
+    { name: '6', value: 2390 },
+    { name: '7', value: 3490 },
+    { name: '8', value: 4000 },
+    { name: '9', value: 4500 },
+    { name: '10', value: 4200 },
+    { name: '11', value: 5000 },
+    { name: '12', value: 5500 },
+    { name: '13', value: 5200 },
+    { name: '14', value: 5800 },
+  ];
+
+  return (
+    <div className="absolute top-0 right-0 z-20 w-[380px] bg-[#0b1221]/90 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform hover:scale-105 transition-transform duration-500">
+       <div className="flex justify-between items-start mb-4">
+          <div>
+             <h4 className="text-white font-bold text-sm">AI SIGNAL DETECTED</h4>
+             <p className="text-xs text-gray-400">USD/JPY, USD/DP, 1M, BIH</p>
+          </div>
+          <div className="flex gap-2">
+             <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400"><Upload size={14}/></div>
+             <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400"><CheckCircle size={14}/></div>
+          </div>
+       </div>
+
+       <div className="h-[120px] w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+             <AreaChart data={data}>
+                <defs>
+                   <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                   </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorVal)" />
+             </AreaChart>
+          </ResponsiveContainer>
+          
+          {/* Buy Button Overlay */}
+          <div className="absolute top-1/2 right-4 transform -translate-y-1/2">
+             <button className="bg-orange-500 hover:bg-orange-600 text-white font-black px-6 py-2 rounded-lg shadow-[0_0_20px_rgba(249,115,22,0.4)] text-sm">
+                BUY
+             </button>
+          </div>
+       </div>
+
+       <div className="flex justify-between mt-4 text-[10px] text-gray-500 font-mono">
+          <span>1.0401</span>
+          <span>1.0420</span>
+          <span>1.0435</span>
+          <span>1.0485</span>
+       </div>
+    </div>
+  );
+};
+
+const HeroMetricsWidget = () => {
+   const data1 = [{ name: 'A', value: 33 }, { name: 'B', value: 67 }];
+   const data2 = [{ name: 'A', value: 36 }, { name: 'B', value: 64 }];
+   const data3 = [{ name: 'A', value: 79 }, { name: 'B', value: 21 }];
+   
+   const Ring = ({ data, color, label }: any) => (
+      <div className="flex flex-col items-center">
+         <div className="w-20 h-20 relative">
+            <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                  <Pie data={data} innerRadius={28} outerRadius={36} startAngle={90} endAngle={-270} dataKey="value">
+                     <Cell fill={color} />
+                     <Cell fill="#1f2937" />
+                  </Pie>
+               </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center">
+               <span className="text-white font-bold text-sm">{data[0].value}%</span>
+            </div>
+         </div>
+         <span className="text-[9px] text-gray-500 uppercase font-bold mt-1">{label}</span>
+      </div>
+   );
+
+   return (
+      <div className="absolute bottom-0 right-10 z-10 w-[340px] bg-[#0b1221]/90 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-5 shadow-2xl">
+         <h4 className="text-white font-bold text-xs mb-4">Performance Metrics</h4>
+         <div className="flex justify-between">
+            <Ring data={data1} color="#00bcd4" label="Win Rate" />
+            <Ring data={data2} color="#f97316" label="Total Trades" />
+            <Ring data={data3} color="#10b981" label="Avg Time" />
+         </div>
+      </div>
+   );
+};
+
+const HeroUploadWidget = () => {
+   return (
+      <div className="absolute top-20 left-0 z-10 w-[240px] bg-[#0b1221]/90 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-5 shadow-xl">
+         <div className="flex justify-between items-center mb-3">
+            <span className="text-white font-bold text-xs">Upload Chart</span>
+            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+         </div>
+         <div className="bg-gray-800/50 rounded-lg p-3 mb-3 border border-gray-700 border-dashed flex items-center justify-center h-20">
+             <Upload size={20} className="text-gray-500" />
+         </div>
+         <button className="w-full bg-orange-500 text-white text-xs font-bold py-2 rounded-lg">
+            Upload Chart
+         </button>
+      </div>
+   );
+};
+
+const HeroPracticeWidget = () => {
+   return (
+      <div className="absolute bottom-32 left-8 z-0 w-[200px] bg-[#0b1221]/80 backdrop-blur-md border border-gray-700/30 rounded-2xl p-4 shadow-lg opacity-80 scale-90">
+         <div className="flex justify-between items-center mb-2">
+            <span className="text-gray-300 font-bold text-[10px]">Practice Metrics</span>
+            <span className="text-orange-500 text-[10px]">P60 Identif</span>
+         </div>
+         <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-4 border-gray-700 border-t-cyan-500"></div>
+            <div className="w-10 h-10 rounded-full border-4 border-gray-700 border-t-orange-500"></div>
+         </div>
+         <button className="w-full mt-3 bg-orange-500/20 text-orange-500 text-[9px] font-bold py-1.5 rounded">
+            Generate
+         </button>
+      </div>
+   );
+};
+
+// --- MAIN LANDING PAGE COMPONENT ---
+
 const LandingPage: React.FC<Props> = ({ user }) => {
   const navigate = useNavigate();
   const [emailInput, setEmailInput] = useState('');
@@ -68,77 +206,150 @@ const LandingPage: React.FC<Props> = ({ user }) => {
     }
   };
 
+  const HexFeature = ({ icon: Icon, title, sub }: any) => (
+      <div className="flex flex-col items-center gap-2">
+         <div className="w-14 h-14 relative flex items-center justify-center">
+            {/* CSS Hexagon shape via border or simple polygon clip */}
+            <div className="absolute inset-0 bg-transparent border-2 border-orange-500/30 rotate-45 rounded-lg"></div>
+            <Icon size={20} className="text-orange-500 relative z-10" />
+         </div>
+         <div className="text-center">
+            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">{title}</p>
+            <p className="text-[9px] text-gray-600 font-mono">{sub}</p>
+         </div>
+      </div>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <nav className="flex justify-between items-center mb-16">
+    <div className="container mx-auto px-4 py-6 md:py-8 font-sans overflow-x-hidden">
+      
+      {/* NAVBAR */}
+      <nav className="flex justify-between items-center mb-16 md:mb-24 relative z-50">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-cyber-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_cyan]">
-            <Eye className="text-black font-bold" />
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(249,115,22,0.4)]">
+            <TrendingUp className="text-white font-bold" size={20} />
           </div>
-          <span className="text-2xl font-black tracking-tighter text-white neon-text italic">TRADE VISION</span>
+          <span className="text-xl md:text-2xl font-black tracking-tighter text-white italic">TradeVision <span className="text-orange-500">Pro</span></span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
            {/* Socials */}
-           <a href="https://t.me/Prodbynatyy" target="_blank" className="p-2 hover:text-cyber-500 transition"><Send size={20}/></a>
-           <a href="https://instagram.com/prodby.natty" target="_blank" className="p-2 hover:text-pink-500 transition"><Instagram size={20}/></a>
+           <div className="hidden md:flex gap-2 mr-4 border-r border-gray-800 pr-4">
+              <a href="https://t.me/Prodbynatyy" target="_blank" className="p-2 text-gray-400 hover:text-cyan-500 transition"><Send size={18}/></a>
+              <a href="https://instagram.com/prodby.natty" target="_blank" className="p-2 text-gray-400 hover:text-pink-500 transition"><Instagram size={18}/></a>
+           </div>
            
           <button 
             onClick={handleAction}
-            className="hidden md:block px-6 py-2 bg-cyber-500 text-black font-bold rounded hover:bg-cyber-400 transition shadow-[0_0_10px_rgba(0,188,212,0.5)]"
+            className="px-5 py-2 md:px-6 md:py-2.5 border border-gray-700 text-white font-bold rounded-lg hover:border-orange-500 hover:text-orange-500 transition text-sm"
           >
-            {user ? 'Open Console' : 'Sign In'}
+            {user ? 'Dashboard' : 'Sign In'}
           </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="text-center mb-24 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyber-500/10 rounded-full blur-[100px] -z-10" />
+      {/* HERO SECTION - REBUILT TO MATCH DESIGN */}
+      <section className="relative grid lg:grid-cols-2 gap-12 lg:gap-8 items-center mb-32">
         
-        <div className="inline-block border border-cyber-500/30 rounded-full px-4 py-1 mb-6 bg-black/40 backdrop-blur-sm">
-           <span className="text-cyber-400 text-sm font-bold tracking-widest uppercase">The Next Gen of Signals</span>
+        {/* LEFT COLUMN: Typography & CTA */}
+        <div className="z-20 text-center lg:text-left">
+           <div className="inline-block px-3 py-1 bg-gray-900 border border-gray-800 rounded-full mb-6">
+              <span className="text-[10px] md:text-xs font-bold text-cyan-400 tracking-widest uppercase">The Future of Trading</span>
+           </div>
+           
+           <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-[0.9] mb-6 tracking-tighter">
+             <span className="text-white block">TRADE SMARTER,</span>
+             <span className="text-white block">NOT HARDER.</span>
+             <span className="text-cyan-400 block mt-2 text-4xl md:text-6xl">Zero Guesswork.</span>
+           </h1>
+
+           <p className="text-gray-400 text-sm md:text-lg mb-8 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+             Instant AI powered trading digests. Precision. Profit. Peace of mind. 
+             Automated analysis that thinks like a pro trader.
+           </p>
+
+           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-16">
+              <button 
+                onClick={handleAction}
+                className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-all transform hover:scale-105"
+              >
+                Start Your Free Trial
+              </button>
+              <button 
+                onClick={() => window.open('https://youtube.com', '_blank')}
+                className="px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black rounded-xl shadow-[0_0_30px_rgba(34,211,238,0.3)] transition-all flex items-center justify-center gap-2"
+              >
+                <PlayCircle size={20} /> Watch Demo Video
+              </button>
+           </div>
+
+           {/* Features Hexagons */}
+           <div className="flex justify-center lg:justify-start gap-8 md:gap-12">
+              <HexFeature icon={Cpu} title="AI Grant" sub="ANALYSIS" />
+              <HexFeature icon={Zap} title="Gamma API" sub="PRECISION" />
+              <HexFeature icon={Shield} title="Real-Time" sub="TAGGING" />
+           </div>
+
+           <div className="mt-12 text-left">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Founders</p>
+              <p className="text-xs text-gray-300">THE FUTURE OF TRADING IS HERE. AND IT'S INTELLIGENT.</p>
+           </div>
         </div>
 
-        <h1 className="text-5xl md:text-8xl font-black mb-6 leading-tight">
-          <span className="bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500">TRADE</span>
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyber-400 to-cyber-600 ml-4">VISION</span>
-        </h1>
-        
-        <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          Turn screenshots into precision trades. AI-powered structural analysis with automated risk calculation.
-        </p>
-        
-        <div className="flex justify-center gap-4">
-           <button 
-             onClick={handleAction}
-             className="group relative px-8 py-4 bg-cyber-500 text-black font-bold rounded-lg overflow-hidden transition-all hover:bg-cyber-400 hover:scale-105 shadow-[0_0_30px_rgba(0,188,212,0.4)]"
-           >
-             <span className="relative z-10 flex items-center gap-2">
-               Analyze Chart Free <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-             </span>
-           </button>
+        {/* RIGHT COLUMN: DASHBOARD COMPOSITION */}
+        <div className="relative h-[500px] w-full hidden lg:block perspective-1000">
+           {/* Ambient Glows */}
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px] -z-10" />
+           <div className="absolute top-20 right-20 w-[300px] h-[300px] bg-orange-500/10 rounded-full blur-[80px] -z-10" />
+
+           {/* The Widgets Composition */}
+           <HeroChartWidget />
+           <HeroMetricsWidget />
+           <HeroUploadWidget />
+           <HeroPracticeWidget />
         </div>
+
+        {/* Mobile View of Composition (Simplified) */}
+        <div className="lg:hidden relative h-[350px] w-full flex items-center justify-center">
+            <div className="scale-75 origin-center relative w-[380px] h-[400px]">
+               <HeroChartWidget />
+            </div>
+        </div>
+
       </section>
 
-      {/* Features Grid */}
-      <section className="grid md:grid-cols-3 gap-8 mb-24">
-        {[
-          { icon: <Zap size={32} />, title: 'Vision Logic', desc: 'Detects Market Structure, Liquidity Sweeps, and FVGs instantly from any chart image.' },
-          { icon: <Shield size={32} />, title: 'Risk Guard', desc: 'Auto-calculates lot size based on your specific account balance & risk %.' },
-          { icon: <BarChart2 size={32} />, title: 'Live Vision', desc: 'Integrated real-time charting for instant verification of setups.' },
-        ].map((f, i) => (
-          <div key={i} className="glass-panel p-8 rounded-xl border-t border-cyber-500/20 hover:border-cyber-500/50 transition duration-300 hover:-translate-y-2">
-            <div className="text-cyber-500 mb-4 bg-cyber-500/10 w-fit p-3 rounded-lg">{f.icon}</div>
-            <h3 className="text-xl font-bold mb-2">{f.title}</h3>
-            <p className="text-gray-400">{f.desc}</p>
-          </div>
-        ))}
+      {/* SUB-SECTIONS (PRICING, EMAIL, ETC) KEEPING EXISTING CONTENT */}
+      
+      {/* EMAIL BAR SECTION */}
+      <section className="mb-24 max-w-4xl mx-auto">
+         <div className="bg-[#0b1221] border border-gray-800 rounded-2xl p-8 relative overflow-hidden group shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-50 group-hover:opacity-100 transition duration-500"></div>
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+               <div className="text-left">
+                  <h3 className="text-2xl font-black text-white italic">JOIN THE VISION</h3>
+                  <p className="text-gray-400 text-sm mt-1">Get early access to signals and AI updates.</p>
+               </div>
+               <div className="flex w-full md:w-auto gap-2">
+                  <div className="relative flex-1 md:w-64">
+                     <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
+                     <input 
+                       type="email" 
+                       placeholder="Enter your email" 
+                       className="w-full bg-black/50 border border-gray-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-cyan-500 outline-none transition"
+                       value={emailInput}
+                       onChange={(e) => setEmailInput(e.target.value)}
+                     />
+                  </div>
+                  <button onClick={handleJoinWithEmail} className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-6 py-2.5 rounded-lg transition whitespace-nowrap shadow-[0_0_15px_rgba(34,211,238,0.4)]">
+                     Join Now
+                  </button>
+               </div>
+            </div>
+         </div>
       </section>
 
       {/* Pricing */}
       <section className="mb-32">
-        <h2 className="text-4xl font-black text-center mb-4">MEMBERSHIP TIERS</h2>
+        <h2 className="text-4xl font-black text-center mb-4 text-white">MEMBERSHIP TIERS</h2>
         <p className="text-center text-gray-400 mb-16">Select your level of access</p>
         
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -169,38 +380,10 @@ const LandingPage: React.FC<Props> = ({ user }) => {
         </div>
       </section>
 
-      {/* EMAIL BAR SECTION - Added per request */}
-      <section className="mb-20 max-w-4xl mx-auto">
-         <div className="glass-panel rounded-2xl p-8 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyber-500/10 to-transparent opacity-50 group-hover:opacity-100 transition duration-500"></div>
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-               <div className="text-left">
-                  <h3 className="text-2xl font-black text-white italic">JOIN THE VISION</h3>
-                  <p className="text-gray-400 text-sm mt-1">Get early access to signals and AI updates.</p>
-               </div>
-               <div className="flex w-full md:w-auto gap-2">
-                  <div className="relative flex-1 md:w-64">
-                     <Mail className="absolute left-3 top-3 text-gray-500" size={18} />
-                     <input 
-                       type="email" 
-                       placeholder="Enter your email" 
-                       className="w-full bg-black/50 border border-gray-700 rounded-lg py-2.5 pl-10 pr-4 text-white focus:border-cyber-500 outline-none transition"
-                       value={emailInput}
-                       onChange={(e) => setEmailInput(e.target.value)}
-                     />
-                  </div>
-                  <button onClick={handleJoinWithEmail} className="bg-cyber-500 hover:bg-cyber-400 text-black font-bold px-6 py-2.5 rounded-lg transition whitespace-nowrap">
-                     Join Now
-                  </button>
-               </div>
-            </div>
-         </div>
-      </section>
-
       {/* Team & Footer */}
       <footer className="border-t border-gray-800 pt-20 pb-12 text-center relative overflow-hidden bg-gradient-to-b from-transparent to-black">
         {/* Ambient Glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyber-500/5 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-500/5 blur-[120px] pointer-events-none" />
 
         <h3 className="text-3xl font-black mb-12 text-white">THE VISIONARIES</h3>
         

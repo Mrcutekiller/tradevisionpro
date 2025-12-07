@@ -22,8 +22,10 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
 
   useEffect(() => {
     // If email is passed from landing page, switch to signup (or login) and pre-fill
-    if (location.state?.email) {
-      setFormData(prev => ({ ...prev, email: location.state.email }));
+    // In v6, location.state is available same way
+    const state = location.state as { email?: string } | null;
+    if (state?.email) {
+      setFormData(prev => ({ ...prev, email: state.email || '' }));
       setIsLogin(false); // Assume they want to sign up if coming from "Join Now"
     }
   }, [location]);

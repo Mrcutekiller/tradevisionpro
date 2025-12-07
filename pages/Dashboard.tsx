@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserProfile, TradeSignal, PlanTier, AccountType } from '../types';
 import { analyzeChartWithGemini } from '../services/geminiService';
 import TradingJourney from '../components/TradingJourney';
@@ -114,150 +114,35 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- Real-time Chart Logic (Adapted for Lightweight Charts) ---
-  const [chartData, setChartData] = useState<{time: number, value: number}[]>(() => {
-    const now = Math.floor(Date.now() / 1000);
-    return Array.from({ length: 100 }, (_, i) => ({
-      time: now - (100 - i), // Past 100 seconds
-      value: 2024 + Math.sin(i * 0.2) * 2 + Math.random() * 0.5
-    }));
-  });
-
-  // Sync chart with Signal Entry when a new signal arrives
-  useEffect(() => {
-    if (lastSignal) {
-       const entry = lastSignal.entry;
-       const volatility = entry * 0.0002; // Scale volatility relative to price
-       const now = Math.floor(Date.now() / 1000);
-
-       const newHistory = Array.from({ length: 100 }, (_, i) => ({
-         time: now - (100 - i),
-         value: entry + (Math.random() - 0.5) * volatility * 10
-       }));
-       setChartData(newHistory);
-    }
-  }, [lastSignal?.id]);
-
-  // Simulated WebSocket Effect with TP1 Bias
-  useEffect(() => {
-    // Enabled for all users for testing purposes
-    // if (user.plan === PlanTier.FREE || user.plan === PlanTier.BASIC) return;
-
-    const intervalId = setInterval(() => {
-      setChartData(prevData => {
-        const lastPoint = prevData[prevData.length - 1];
-        let currentPrice = lastPoint.value;
-        
-        const baseVolatility = currentPrice * 0.0001; 
-        let change = (Math.random() - 0.5) * (baseVolatility * 5); // Random noise
-        
-        // Bias movement towards signal target if exists
-        if (lastSignal) {
-             const target = lastSignal.tp1;
-             const isBuy = lastSignal.direction === 'BUY';
-             const trendStrength = baseVolatility * 2;
-             
-             if (isBuy) {
-                 if (currentPrice < target) change += Math.random() * trendStrength;
-             } else {
-                 if (currentPrice > target) change -= Math.random() * trendStrength;
-             }
-             
-             if (Math.random() > 0.85) change *= 3; 
-        }
-
-        const newPrice = currentPrice + change;
-        const newTime = lastPoint.time + 1; // Increment by 1 second for simulation
-
-        const newPoint = { time: newTime, value: newPrice };
-        // Keep array size constant
-        const newData = [...prevData.slice(1), newPoint];
-        return newData;
-      });
-    }, 1000); // Update every second for consistent time scale
-
-    return () => clearInterval(intervalId);
-  }, [user.plan, lastSignal]);
-
-  // --- Auto-Mark Trades Logic with Balance Update ---
-  useEffect(() => {
-    if (!user.tradeHistory) return;
+  // --- Helper to map AI symbol to TradingView Symbol ---
+  const getTradingViewSymbol = (pair: string): string => {
+    const p = pair.toUpperCase().replace(/[^A-Z0-9]/g, '');
     
-    // Check pending trades
-    const pendingTrades = user.tradeHistory.filter(t => t.status === 'PENDING');
+    // Gold
+    if (p.includes('XAU') || p.includes('GOLD')) return 'OANDA:XAUUSD';
     
-    if (pendingTrades.length === 0) return;
+    // Indices
+    if (p.includes('NDX') || p.includes('NASDAQ') || p.includes('US100')) return 'CAPITALCOM:US100';
+    if (p.includes('DJI') || p.includes('US30')) return 'CAPITALCOM:US30';
+    if (p.includes('SPX') || p.includes('US500')) return 'CAPITALCOM:US500';
+    if (p.includes('GER30') || p.includes('DAX')) return 'CAPITALCOM:DE40';
 
-    const currentPrice = chartData[chartData.length - 1].value;
-    let hasUpdates = false;
-    let totalPnlToAdd = 0;
-    
-    const updatedHistory = user.tradeHistory.map(trade => {
-        if (trade.status !== 'PENDING') return trade; // Only update PENDING
+    // Crypto
+    if (p.includes('BTC')) return 'BINANCE:BTCUSDT';
+    if (p.includes('ETH')) return 'BINANCE:ETHUSDT';
+    if (p.includes('SOL')) return 'BINANCE:SOLUSDT';
 
-        // Safety Check
-        const deviation = Math.abs(currentPrice - trade.entry) / trade.entry;
-        if (deviation > 0.2) return trade;
-
-        let newStatus: 'WIN' | 'LOSS' | 'PENDING' = 'PENDING';
-        let exitPrice = 0;
-        let realizedPnl = 0;
-
-        // Simple Hit Logic
-        if (trade.type === 'BUY') {
-            if (trade.tp1 && currentPrice >= trade.tp1) {
-                newStatus = 'WIN';
-                exitPrice = trade.tp1;
-            } else if (trade.sl && currentPrice <= trade.sl) {
-                newStatus = 'LOSS';
-                exitPrice = trade.sl;
-            }
-        } else {
-             if (trade.tp1 && currentPrice <= trade.tp1) {
-                newStatus = 'WIN';
-                exitPrice = trade.tp1;
-            } else if (trade.sl && currentPrice >= trade.sl) {
-                newStatus = 'LOSS';
-                exitPrice = trade.sl;
-            }
-        }
-
-        if (newStatus !== 'PENDING') {
-            hasUpdates = true;
-            if (trade.riskAmount) {
-                realizedPnl = newStatus === 'WIN' ? trade.riskAmount : -trade.riskAmount;
-            } else {
-                realizedPnl = (newStatus === 'WIN' ? 100 : -100); 
-            }
-            
-            totalPnlToAdd += realizedPnl;
-
-            return { 
-                ...trade, 
-                status: newStatus, 
-                exit: exitPrice, 
-                pnl: parseFloat(realizedPnl.toFixed(2)) 
-            };
-        }
-        
-        return trade;
-    });
-
-    if (hasUpdates) {
-        const newSettings = { 
-            ...user.settings, 
-            accountSize: parseFloat((user.settings.accountSize + totalPnlToAdd).toFixed(2)) 
-        };
-        
-        updateUser({ 
-            tradeHistory: updatedHistory,
-            settings: newSettings
-        });
-        showToast(`Trade Status Updated: ${totalPnlToAdd > 0 ? '+' : ''}${totalPnlToAdd} PnL`, totalPnlToAdd > 0 ? 'success' : 'info');
+    // Forex & Others
+    // Try to guess if it's forex (length 6 and standard chars)
+    if (p.length === 6 && !p.includes('100')) {
+        return `FX:${p}`;
     }
 
-  }, [chartData, user.tradeHistory, updateUser, user.settings, showToast]);
+    // Default fallback
+    return `FX:${p}`;
+  };
 
+  const activeSymbol = lastSignal ? getTradingViewSymbol(lastSignal.pair) : 'OANDA:XAUUSD';
 
   const checkLimits = () => {
     if (user.plan === PlanTier.FREE && user.signalsUsedLifetime >= 5) {
@@ -756,22 +641,22 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                   {/* RIGHT: LIVE MONITOR & WIDGETS */}
                   <div className="flex flex-col gap-8 h-full">
                      {/* Live Chart Widget */}
-                     <div className="bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 h-[320px] flex flex-col relative overflow-hidden shadow-lg">
+                     <div className="bg-[#0e0e0e] border border-gray-800 rounded-3xl p-6 h-[400px] md:h-[320px] flex flex-col relative overflow-hidden shadow-lg">
                         <div className="flex justify-between items-center mb-6">
                            <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 uppercase tracking-wide">
-                              <BarChart2 size={16}/> Market Feed
+                              <BarChart2 size={16}/> Live Market Feed
                            </h3>
                            <div className="flex items-center gap-2">
                                <span className="flex h-2 w-2 relative">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                                </span>
-                               <span className="text-[10px] font-bold text-green-500 uppercase">Live</span>
+                               <span className="text-[10px] font-bold text-green-500 uppercase">Connected</span>
                            </div>
                         </div>
                         
-                        <div className="flex-1 w-full min-h-0 relative rounded-xl overflow-hidden bg-black/20">
-                           <TradingChart data={chartData} signal={lastSignal} />
+                        <div className="flex-1 w-full min-h-0 relative rounded-xl overflow-hidden bg-black">
+                           <TradingChart symbol={activeSymbol} />
                         </div>
                      </div>
 
@@ -781,7 +666,7 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                          <h3 className="text-sm font-bold text-cyber-500 mb-4 uppercase tracking-wider">Trading Insight</h3>
                          <div className="relative z-10 space-y-6">
                             <p className="text-base md:text-lg text-white font-medium leading-relaxed">
-                               "Focus on the <span className="text-cyber-500">15m timeframe</span> liquidity sweeps. The AI is currently detecting high probability reversals on Gold."
+                               "Focus on the <span className="text-cyber-500">15m timeframe</span> liquidity sweeps. The AI is currently detecting high probability reversals on {activeSymbol.split(':')[1] || 'Gold'}."
                             </p>
                             <div className="flex gap-4">
                                <div className="bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-800">
@@ -789,8 +674,8 @@ const Dashboard: React.FC<Props> = ({ user, updateUser }) => {
                                   <p className="text-white font-bold">New York</p>
                                </div>
                                <div className="bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-800">
-                                  <p className="text-[10px] text-gray-500 uppercase font-bold">Vix</p>
-                                  <p className="text-red-400 font-bold">14.2 (Low)</p>
+                                  <p className="text-[10px] text-gray-500 uppercase font-bold">Volatility</p>
+                                  <p className="text-cyber-400 font-bold">High</p>
                                </div>
                             </div>
                          </div>
